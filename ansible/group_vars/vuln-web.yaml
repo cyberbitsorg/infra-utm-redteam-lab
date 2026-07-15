@@ -1,0 +1,9 @@
+---
+# Intentionally vulnerable web application, served on the lab network.
+# OWASP Juice Shop publishes official multi-arch (arm64) images, so it runs
+# natively on Apple Silicon guests. Swap for another target by changing the
+# image + ports below (see docs for DVWA, which needs an arm64 image).
+vuln_image: bkimminich/juice-shop:latest
+vuln_container_name: juice-shop
+vuln_host_port: 80
+vuln_container_port: 3000

@@ -1,0 +1,25 @@
+---
+# The attacker runs Kali. Which tools to install is chosen by ATTACKER_TOOLSET
+# in lab.conf (passed in by scripts/up.sh as -e attacker_toolset=...).
+#   curated  -> attacker_packages_curated (fast headless subset)
+#   headless -> the full kali-linux-headless metapackage
+#   large    -> the broader kali-linux-large metapackage
+attacker_toolset: curated
+
+attacker_packages_curated:
+  - nmap
+  - netcat-traditional
+  - gobuster
+  - ffuf
+  - hydra
+  - sqlmap
+  - metasploit-framework
+attacker_packages_headless:
+  - kali-linux-headless
+attacker_packages_large:
+  - kali-linux-large
+
+attacker_packages: >-
+  {{ attacker_packages_curated if attacker_toolset == 'curated'
+     else attacker_packages_headless if attacker_toolset == 'headless'
+     else attacker_packages_large }}

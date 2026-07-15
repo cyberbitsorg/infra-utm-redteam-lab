@@ -1,0 +1,83 @@
+---
+- name: Install intentionally-vulnerable services
+  ansible.builtin.apt:
+    name:
+      - openssh-server
+      - vsftpd
+      - samba
+      - apache2
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create the weak-credential user
+  ansible.builtin.user:
+    name: "{{ weak_user }}"
+    shell: /bin/bash
+    create_home: true
+
+- name: Set the weak password (lab-only)
+  # Set on the guest so we do not depend on the control node's crypt/passlib.
+  ansible.builtin.shell:
+    cmd: "echo '{{ weak_user }}:{{ weak_password }}' | chpasswd"
+  changed_when: false
+
+- name: Enable SSH password auth (deliberately weak; must override cloud-init)
+  # Sorts before cloud-init's 50-cloud-init.conf, and sshd honours the first
+  # match, so this "yes" wins over cloud-init's "no".
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/00-lab-weak.conf
+    content: "PasswordAuthentication yes\n"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart ssh
+
+- name: Enable anonymous FTP (vsftpd)
+  ansible.builtin.copy:
+    dest: /etc/vsftpd.conf
+    content: |
+      listen=YES
+      listen_ipv6=NO
+      anonymous_enable=YES
+      local_enable=YES
+      write_enable=NO
+      dirmessage_enable=YES
+      use_localtime=YES
+      xferlog_enable=YES
+      secure_chroot_dir=/var/run/vsftpd/empty
+      pam_service_name=vsftpd
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart vsftpd
+
+- name: Create an open Samba share directory
+  ansible.builtin.file:
+    path: "{{ samba_share_path }}"
+    state: directory
+    mode: "0777"
+
+- name: Configure an open (guest) Samba share
+  ansible.builtin.blockinfile:
+    path: /etc/samba/smb.conf
+    marker: "# {mark} REDTEAM LAB SHARE"
+    block: |
+      [public]
+        path = {{ samba_share_path }}
+        browsable = yes
+        read only = no
+        guest ok = yes
+        force user = nobody
+  notify: restart samba
+
+- name: Ensure the weak services run at boot
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - ssh
+    - vsftpd
+    - smbd
+    - apache2

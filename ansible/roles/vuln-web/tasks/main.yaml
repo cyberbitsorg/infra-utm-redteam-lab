@@ -1,0 +1,28 @@
+---
+- name: Install Docker engine
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - python3-docker
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure Docker is running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Run the vulnerable web application
+  community.docker.docker_container:
+    name: "{{ vuln_container_name }}"
+    image: "{{ vuln_image }}"
+    state: started
+    restart_policy: unless-stopped
+    published_ports:
+      - "{{ vuln_host_port }}:{{ vuln_container_port }}"
+
+- name: Show where the target is reachable
+  ansible.builtin.debug:
+    msg: "Target up: http://{{ lab_ip }}:{{ vuln_host_port }} (from the attacker box)"

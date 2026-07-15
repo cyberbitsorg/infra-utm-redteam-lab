@@ -1,0 +1,7 @@
+---
+# Intentionally weak "infra" target: exposed services with weak configuration,
+# reachable on the isolated lab network. Lab-only — never expose these settings
+# on a real host.
+weak_user: victim
+weak_password: "Password1"
+samba_share_path: /srv/public

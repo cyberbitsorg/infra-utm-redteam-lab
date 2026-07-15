@@ -1,0 +1,32 @@
+---
+# Configures the lab after provisioning. Idempotent: safe to re-run.
+# Run subsets with tags, e.g. --tags attacker or --tags vuln-web.
+
+- name: Base configuration for all lab hosts
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: common
+      tags: [common, base]
+
+- name: Configure attacker box
+  hosts: attacker
+  become: true
+  roles:
+    - role: attacker
+      tags: [attacker]
+
+- name: Configure vulnerable web target
+  hosts: vuln-web
+  become: true
+  roles:
+    - role: vuln-web
+      tags: [vuln-web, apps]
+
+- name: Configure vulnerable services target
+  hosts: vuln-net
+  become: true
+  roles:
+    - role: vuln-net
+      tags: [vuln-net, apps]
