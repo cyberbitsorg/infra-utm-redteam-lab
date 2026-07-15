@@ -123,7 +123,10 @@ find_qemu_img() {
 disk_bytes() {
   local img="${1:?image path required}" qi
   qi="$(find_qemu_img)" || return 0
-  "$qi" info "$img" 2>/dev/null | sed -n 's/.*(\([0-9][0-9]*\) bytes).*/\1/p' | head -1
+  # qemu-img can fail (missing, unreadable or corrupt image) while sed and
+  # head still succeed on empty input; under pipefail that failure becomes
+  # the pipeline's status and would otherwise kill the caller under set -e.
+  "$qi" info "$img" 2>/dev/null | sed -n 's/.*(\([0-9][0-9]*\) bytes).*/\1/p' | head -1 || true
 }
 
 # --- utmctl -----------------------------------------------------------------
