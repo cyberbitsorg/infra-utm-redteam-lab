@@ -4,7 +4,10 @@ The lab is designed to grow. Two common directions:
 
 ## Add another Linux VM
 
-1. Add a line to `LAB_VMS` in `lab.conf`, for example `"vuln-ssh:vuln-ssh"`
+1. Add a line to `LAB_VMS` in `lab.conf`, for example `"vuln-ssh:vuln-ssh"`.
+   To give it more than the `LAB_CPU` / `LAB_RAM` / `LAB_DISK_GB` defaults, add
+   any of `cpu=`, `ram=` (MiB) or `disk=` (GB):
+   `"vuln-ssh:vuln-ssh cpu=4 ram=4096 disk=40"`
 2. Create an Ansible role at `ansible/roles/vuln-ssh/tasks/main.yaml`
 3. Add a play for it in `ansible/playbook.yaml` targeting the `vuln-ssh` group
 4. Optionally add `ansible/group_vars/vuln-ssh.yaml` for its variables

@@ -4,7 +4,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help preflight up provision configure status ssh down destroy lint
+.PHONY: help preflight up provision configure status ssh down destroy lint test
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -34,6 +34,9 @@ down: ## Stop all lab VMs (keeps them for later)
 destroy: ## Stop and delete all lab VMs and generated artifacts
 	@scripts/destroy.sh
 
+test: ## Run the shell unit tests
+	@tests/parse-vm-entry.sh
+
 lint: ## Syntax-check scripts and Ansible
-	@bash -n scripts/*.sh && echo "shell OK"
+	@bash -n scripts/*.sh tests/*.sh && echo "shell OK"
 	@command -v ansible-lint >/dev/null && ansible-lint ansible/ || echo "ansible-lint not installed, skipping"

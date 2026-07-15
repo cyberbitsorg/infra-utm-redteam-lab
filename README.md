@@ -1,6 +1,6 @@
 # UTM red team lab
 
-Hands-off, reproducible red team lab of virtual machines on UTM for Apple Silicon. One command builds an attacker box and a vulnerable target on an isolated network, ready to attack. Built to be shared and extended.
+Automated, reproducible red team lab of virtual machines on UTM for Apple Silicon. One command builds an attacker box and one or more vulnerable targets on an isolated network(s), ready to attack. Built to be shared and extended.
 
 The lab uses ARM64 cloud images, so it runs natively on Apple Silicon (M1 through M5). Provisioning is driven by UTM's AppleScript interface, first-boot setup by cloud-init, and all configuration by Ansible.
 
@@ -20,9 +20,9 @@ The attacker and targets share an isolated `10.10.10.0/24` segment (a shared App
 ## Requirements
 
 - Apple Silicon Mac (ARM64) with an internet connection (for image downloads and package installs)
-- Xcode Command Line Tools, for `make` and `git`: `xcode-select --install`
+- Xcode Command Line Tools, for `make` and `git`: Install it with `xcode-select --install` from the terminal
 - [Homebrew](https://brew.sh/), for the `brew install` steps below
-- [UTM](https://mac.getutm.app/): `brew install --cask utm` (`utmctl` is called automatically from inside UTM.app, so no PATH setup is needed)
+- [UTM](https://mac.getutm.app/): either `brew install --cask utm`, or download the app from mac.getutm.app and drag it to `/Applications`. Both work: the scripts only need `UTM.app` to be there, and `utmctl` is called from inside the app bundle, so no PATH setup is needed
 - `qemu` for `qemu-img`: `brew install qemu`
 - An ISO builder for cloud-init seeds: `xorriso` (`brew install xorriso`) or the built-in macOS `hdiutil` (used automatically if `xorriso` is absent)
 - `ansible`: `brew install ansible`
@@ -40,7 +40,17 @@ The attacker and targets share an isolated `10.10.10.0/24` segment (a shared App
 cp lab.conf.example lab.conf
 ```
 
-The defaults build a Kali `attacker`, a `vuln-web` target (Juice Shop) and a `vuln-net` target (weak services). Edit `lab.conf` for different names, sizes, an extra VM, or the attacker toolset (`ATTACKER_TOOLSET`: `curated` / `headless` / `large`).
+The defaults build a Kali `attacker`, a `vuln-web` target (Juice Shop) and a `vuln-net` target (weak services). Edit `lab.conf` for different names, an extra VM, or the attacker toolset (`ATTACKER_TOOLSET`: `curated` / `headless` / `large`).
+
+Each roster entry is `"name:role [cpu=N] [ram=MiB] [disk=GB]"`. The resource fields are optional and fall back to `LAB_CPU`, `LAB_RAM` and `LAB_DISK_GB`, so you only spell out the machines that need more:
+
+```bash
+LAB_VMS=(
+  "attacker:attacker cpu=4 ram=4096 disk=60"
+  "vuln-web:vuln-web"
+  "vuln-net:vuln-net"
+)
+```
 
 ### 2. Build the lab
 

@@ -47,6 +47,61 @@ role_image() {
   esac
 }
 
+# Parse one LAB_VMS entry into VM_SHORT / VM_ROLE / VM_CPU / VM_RAM / VM_DISK.
+#
+# Entry syntax: "name:role [cpu=N] [ram=MiB] [disk=GB]"
+# The resource fields are optional and order-free; each one falls back to the
+# lab-wide LAB_CPU / LAB_RAM / LAB_DISK_GB. Omitting ":role" makes the role the
+# same as the name.
+#
+# This is the ONLY place that knows the roster syntax. Bash 3.2 has no
+# associative arrays, so the result comes back as globals.
+parse_vm_entry() {
+  local entry="${1:?entry required}"
+  local spec fields field key val
+
+  # Split off the "name:role" head at the first space; the rest are fields.
+  spec="${entry%% *}"
+  if [[ "$entry" == *" "* ]]; then
+    fields="${entry#* }"
+  else
+    fields=""
+  fi
+
+  # Split the head at the FIRST colon, so a colon in a field can never be
+  # mistaken for the role separator.
+  VM_SHORT="${spec%%:*}"
+  VM_ROLE="${spec#*:}"
+  [[ -n "$VM_SHORT" ]] || die "LAB_VMS entry '${entry}' has no VM name."
+  [[ -n "$VM_ROLE" ]] || die "LAB_VMS entry '${entry}' has an empty role."
+
+  VM_CPU="$LAB_CPU"
+  VM_RAM="$LAB_RAM"
+  VM_DISK="$LAB_DISK_GB"
+
+  # Deliberate word splitting: the fields are space separated.
+  # shellcheck disable=SC2086
+  for field in $fields; do
+    [[ "$field" == *=* ]] \
+      || die "LAB_VMS entry '${entry}': '${field}' is not key=value. Valid keys: cpu, ram, disk."
+    key="${field%%=*}"
+    val="${field#*=}"
+    # Check the key before the value, so 'mem=abc' complains about 'mem'
+    # rather than about the number.
+    case "$key" in
+      cpu|ram|disk) ;;
+      *) die "LAB_VMS entry '${entry}': unknown field '${key}'. Valid keys: cpu, ram, disk." ;;
+    esac
+    [[ "$val" =~ ^[1-9][0-9]*$ ]] \
+      || die "LAB_VMS entry '${entry}': ${key} must be a positive whole number, got '${val}'."
+    case "$key" in
+      cpu)  VM_CPU="$val" ;;
+      ram)  VM_RAM="$val" ;;
+      disk) VM_DISK="$val" ;;
+    esac
+  done
+}
+
 # --- Platform guard ---------------------------------------------------------
 require_macos() {
   [[ "$(uname -s)" == "Darwin" ]] || die "This lab provisions UTM VMs and must run on macOS."

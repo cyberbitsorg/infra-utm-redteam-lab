@@ -18,8 +18,9 @@ LAB_SSH_KEY="${HOME}/.ssh/id_ed25519_redteam.pub"
 # so default to shared. See docs/network.md to harden to host-only afterwards.
 LAB_NETWORK_MODE="shared"
 
-# --- Resources per VM -------------------------------------------------------
-# CPU cores and RAM (MiB). Disk is grown to LAB_DISK_GB from the cloud image.
+# --- Resource defaults ------------------------------------------------------
+# Defaults for every VM in LAB_VMS below. A VM overrides any of these with a
+# cpu= / ram= / disk= field in its roster entry.
 LAB_CPU=2
 LAB_RAM=2048
 LAB_DISK_GB=20
@@ -48,11 +49,28 @@ KALI_IMG_FILE="kali-genericcloud-arm64.raw"
 ATTACKER_TOOLSET="curated"
 
 # --- VM roster --------------------------------------------------------------
-# Each entry: "name:role". role maps to a base image (attacker=Kali, else Ubuntu),
-# a cloud-init seed and an Ansible group. Add a line + a matching Ansible role to
-# grow the lab (see README).
+# Each entry: "name:role [cpu=N] [ram=MiB] [disk=GB]"
+#
+#   name   short name: the UTM VM is LAB_PREFIX-name, and this is what
+#          'make ssh VM=' and the Ansible inventory use
+#   role   maps to a base image (attacker=Kali, anything else=Ubuntu), a
+#          cloud-init seed and an Ansible group
+#   cpu    CPU cores       (default: LAB_CPU)
+#   ram    memory in MiB   (default: LAB_RAM)
+#   disk   disk size in GB (default: LAB_DISK_GB)
+#
+# The resource fields are optional and their order does not matter; a VM that
+# names none of them uses the defaults above. Give the attacker room if you
+# raise ATTACKER_TOOLSET: kali-linux-large does not fit in 20 GB.
+#
+# Changing a field for a VM that already exists makes the next 'make up' stop
+# that VM, apply the change, and start it again. VMs whose resources did not
+# change are never restarted. Disks only ever grow: lowering disk= warns and
+# leaves the disk untouched.
+#
+# Add a line plus a matching Ansible role to grow the lab (see README).
 LAB_VMS=(
-  "attacker:attacker"
+  "attacker:attacker cpu=4 ram=4096 disk=60"
   "vuln-web:vuln-web"
   "vuln-net:vuln-net"
 )
