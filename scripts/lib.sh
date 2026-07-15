@@ -62,3 +62,12 @@ find_qemu_img() {
   [[ -n "$bundled" ]] && { echo "$bundled"; return 0; }
   return 1
 }
+
+# --- utmctl -----------------------------------------------------------------
+# utmctl ships inside UTM.app and is usually NOT on PATH. Resolve it once so
+# every script can call "$UTMCTL" and work whether or not you added it to PATH.
+if command -v utmctl >/dev/null 2>&1; then
+  UTMCTL="$(command -v utmctl)"
+else
+  UTMCTL="/Applications/UTM.app/Contents/MacOS/utmctl"
+fi

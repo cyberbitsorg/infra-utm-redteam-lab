@@ -12,8 +12,13 @@ read -r -p "Type 'yes' to continue: " confirm
 for entry in "${LAB_VMS[@]}"; do
   name="$(vm_name "${entry%%:*}")"
   log "Stopping and deleting ${name}"
-  utmctl stop "$name" 2>/dev/null || true
-  utmctl delete "$name" 2>/dev/null \
+  "$UTMCTL" stop "$name" 2>/dev/null || true
+  # Wait for the VM to actually stop; a running VM cannot be deleted.
+  for _ in 1 2 3 4 5 6; do
+    [[ "$("$UTMCTL" status "$name" 2>/dev/null)" == "started" ]] || break
+    sleep 1
+  done
+  "$UTMCTL" delete "$name" 2>/dev/null \
     || osascript -e "tell application \"UTM\" to delete virtual machine named \"${name}\"" 2>/dev/null \
     || warn "Could not delete ${name} (already gone?)"
 done

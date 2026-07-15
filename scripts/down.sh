@@ -6,7 +6,7 @@ load_config
 for entry in "${LAB_VMS[@]}"; do
   name="$(vm_name "${entry%%:*}")"
   log "Stopping ${name}"
-  utmctl stop "$name" 2>/dev/null \
+  "$UTMCTL" stop "$name" 2>/dev/null \
     || osascript -e "tell application \"UTM\" to stop virtual machine named \"${name}\"" 2>/dev/null \
     || warn "Could not stop ${name} (not running?)"
 done

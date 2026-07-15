@@ -16,7 +16,7 @@ lab_ip="10.10.10.$((10 + idx))"
 ssh_port="$((2200 + idx))"
 
 # Skip if a VM with this name already exists (idempotent re-runs).
-if utmctl list 2>/dev/null | grep -q " ${name}$"; then
+if "$UTMCTL" list 2>/dev/null | grep -q " ${name}$"; then
   warn "VM ${name} already exists, skipping creation"
   echo "${name} ${ssh_port} ${lab_ip}"
   exit 0
@@ -56,7 +56,7 @@ vm_id="$(osascript "$(dirname "${BASH_SOURCE[0]}")/create-vm.applescript" \
 ok "Created ${name} (${vm_id})"
 
 log "Starting ${name}"
-utmctl start "$name" >/dev/null 2>&1 || osascript -e "tell application \"UTM\" to start virtual machine named \"${name}\""
+"$UTMCTL" start "$name" >/dev/null 2>&1 || osascript -e "tell application \"UTM\" to start virtual machine named \"${name}\""
 
 # Emit a line the orchestrator parses: <name> <ssh_port> <lab_ip>
 echo "${name} ${ssh_port} ${lab_ip}"

@@ -7,6 +7,6 @@ printf '%-28s %-10s\n' "VM" "STATUS"
 printf '%-28s %-10s\n' "----------------------------" "----------"
 for entry in "${LAB_VMS[@]}"; do
   name="$(vm_name "${entry%%:*}")"
-  status="$(utmctl status "$name" 2>/dev/null || echo "not created")"
+  status="$("$UTMCTL" status "$name" 2>/dev/null || echo "not created")"
   printf '%-28s %-10s\n' "$name" "$status"
 done

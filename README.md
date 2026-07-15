@@ -19,14 +19,18 @@ The attacker and targets share an isolated `10.10.10.0/24` segment (a shared App
 
 ## Requirements
 
-- Apple Silicon Mac (ARM64)
-- [UTM](https://mac.getutm.app/) with `utmctl` available (ships inside UTM.app)
+- Apple Silicon Mac (ARM64) with an internet connection (for image downloads and package installs)
+- Xcode Command Line Tools, for `make` and `git`: `xcode-select --install`
+- [Homebrew](https://brew.sh/), for the `brew install` steps below
+- [UTM](https://mac.getutm.app/): `brew install --cask utm` (`utmctl` is called automatically from inside UTM.app, so no PATH setup is needed)
 - `qemu` for `qemu-img`: `brew install qemu`
 - An ISO builder for cloud-init seeds: `xorriso` (`brew install xorriso`) or the built-in macOS `hdiutil` (used automatically if `xorriso` is absent)
 - `ansible`: `brew install ansible`
 - Free disk space: roughly **~20 GB** for the default (`curated`) build. The Kali attacker (with two kernels + toolset) is the bulk at ~7 GB, the two targets ~2.5 GB each, plus the base images. Choosing `ATTACKER_TOOLSET=large` needs considerably more (plan for 40 GB+).
 
 `make preflight` checks the tools and generates an SSH key if you do not have one.
+
+> **First run:** macOS asks for permission the first time your terminal controls UTM (a prompt, then System Settings → Privacy & Security → Automation). Approve it, otherwise provisioning cannot create VMs.
 
 ## Quick start
 
