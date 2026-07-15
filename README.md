@@ -102,6 +102,8 @@ Change the roster in `lab.conf`, then adjust Ansible:
 
 Re-run `make up` to apply. Ansible is idempotent, so existing VMs are only updated, never rebuilt.
 
+Resource changes work the same way: raise `cpu`, `ram` or `disk` on a roster entry and the next `make up` stops that VM, applies the change and starts it again. VMs you did not change are left running. Disks only grow, so lowering `disk=` warns and does nothing.
+
 ## Useful commands
 
 ```bash

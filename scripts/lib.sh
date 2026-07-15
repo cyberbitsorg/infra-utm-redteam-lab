@@ -137,3 +137,25 @@ if command -v utmctl >/dev/null 2>&1; then
 else
   UTMCTL="/Applications/UTM.app/Contents/MacOS/utmctl"
 fi
+
+# True if UTM already has a VM with this exact name.
+vm_exists() {
+  "$UTMCTL" list 2>/dev/null | grep -q " ${1}\$"
+}
+
+# Stop a VM and wait for it to really be stopped. utmctl stop asks the guest to
+# shut down, which is not instant. Returns 1 if it is still running after the
+# timeout, so callers can decide whether that is fatal.
+# Usage: stop_vm_and_wait <name> [timeout_seconds, default 60]
+stop_vm_and_wait() {
+  local name="${1:?vm name required}" timeout="${2:-60}" waited=0
+  "$UTMCTL" stop "$name" >/dev/null 2>&1 \
+    || osascript -e "tell application \"UTM\" to stop virtual machine named \"${name}\"" >/dev/null 2>&1 \
+    || true
+  while [[ "$waited" -lt "$timeout" ]]; do
+    [[ "$("$UTMCTL" status "$name" 2>/dev/null)" == "started" ]] || return 0
+    sleep 1
+    waited=$((waited + 1))
+  done
+  return 1
+}
