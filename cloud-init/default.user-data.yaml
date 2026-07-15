@@ -1,0 +1,33 @@
+#cloud-config
+# Base bootstrap for every lab VM. Placeholders (@@...@@) are filled in by
+# scripts/make-seed.sh. Role-specific software is installed by Ansible, not here,
+# so a single bootstrap keeps all VMs identical at first boot.
+
+hostname: "@@HOSTNAME@@"
+preserve_hostname: false
+
+users:
+  - name: "@@LAB_USER@@"
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys:
+      - "@@SSH_KEY@@"
+
+ssh_pwauth: false
+disable_root: true
+
+package_update: true
+packages:
+  - python3
+  - qemu-guest-agent
+
+runcmd:
+  - [systemctl, enable, --now, qemu-guest-agent]
+
+# Grow the root filesystem to fill the resized virtual disk.
+growpart:
+  mode: auto
+  devices: ["/"]
+resize_rootfs: true

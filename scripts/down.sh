@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Stop all lab VMs (they remain in UTM for a later 'make up').
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+load_config
+
+for entry in "${LAB_VMS[@]}"; do
+  name="$(vm_name "${entry%%:*}")"
+  log "Stopping ${name}"
+  utmctl stop "$name" 2>/dev/null \
+    || osascript -e "tell application \"UTM\" to stop virtual machine named \"${name}\"" 2>/dev/null \
+    || warn "Could not stop ${name} (not running?)"
+done
+ok "All lab VMs stopped"

@@ -1,0 +1,58 @@
+# infra-utm-redteam-lab configuration
+# Copy to lab.conf and adjust. lab.conf is gitignored.
+
+# --- Identity ---------------------------------------------------------------
+# Prefix for all VM names in UTM, so the whole lab is easy to spot and remove.
+LAB_PREFIX="redteam"
+
+# User created inside every VM (cloud-init). Ansible connects as this user.
+LAB_USER="operator"
+
+# Public SSH key injected into every VM. Generated automatically by
+# scripts/preflight.sh if the file does not exist.
+LAB_SSH_KEY="${HOME}/.ssh/id_ed25519_redteam.pub"
+
+# --- Networking -------------------------------------------------------------
+# UTM network mode: "shared" (NAT, VMs get internet + can reach each other),
+# or "host" (host-only, isolated, no internet). Provisioning needs packages,
+# so default to shared. See docs/network.md to harden to host-only afterwards.
+LAB_NETWORK_MODE="shared"
+
+# --- Resources per VM -------------------------------------------------------
+# CPU cores and RAM (MiB). Disk is grown to LAB_DISK_GB from the cloud image.
+LAB_CPU=2
+LAB_RAM=2048
+LAB_DISK_GB=20
+
+# --- Base images (ARM64 / aarch64) ------------------------------------------
+# Targets run Ubuntu; the attacker runs Kali. The base image is chosen per role
+# (see scripts/lib.sh role_image). Checksums are verified against the SHA256SUMS
+# published alongside each image.
+UBUNTU_IMG_URL="https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-arm64.img"
+UBUNTU_SHA_URL="https://cloud-images.ubuntu.com/releases/24.04/release/SHA256SUMS"
+
+# Kali attacker image (ARM64 genericcloud, cloud-init enabled). It ships as a
+# .tar.xz containing a raw disk (disk.raw); fetch-images.sh verifies the archive,
+# extracts it and renames it to KALI_IMG_FILE. The raw image is ~25 GiB (already
+# larger than LAB_DISK_GB, so create-vm.sh never shrinks it).
+KALI_IMG_URL="https://kali.download/cloud-images/current/kali-linux-2026.2-cloud-genericcloud-arm64.tar.xz"
+KALI_SHA_URL="https://kali.download/cloud-images/current/SHA256SUMS"
+KALI_IMG_FILE="kali-genericcloud-arm64.raw"
+
+# --- Attacker toolset -------------------------------------------------------
+# Which Kali tools the 'attacker' role installs. Bigger = slower first `make up`.
+#   curated  : fast headless subset (nmap, netcat, gobuster, ffuf, hydra,
+#              sqlmap, metasploit-framework, seclists)
+#   headless : full 'kali-linux-headless' metapackage (the standard Kali toolset)
+#   large    : 'kali-linux-large' (an even broader set)
+ATTACKER_TOOLSET="curated"
+
+# --- VM roster --------------------------------------------------------------
+# Each entry: "name:role". role maps to a base image (attacker=Kali, else Ubuntu),
+# a cloud-init seed and an Ansible group. Add a line + a matching Ansible role to
+# grow the lab (see README).
+LAB_VMS=(
+  "attacker:attacker"
+  "vuln-web:vuln-web"
+  "vuln-net:vuln-net"
+)
