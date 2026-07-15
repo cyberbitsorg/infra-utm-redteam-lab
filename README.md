@@ -60,6 +60,9 @@ curl http://10.10.10.12          # vuln-web: OWASP Juice Shop
 # vuln-net (10.10.10.13): weak SSH/FTP/Samba services to enumerate and attack
 ```
 
+`docs/attacking.md` is a short operator's guide — where to start on each target,
+with concrete commands for recon, Juice Shop, and the weak-services box.
+
 ### 4. Tear down
 
 ```bash
