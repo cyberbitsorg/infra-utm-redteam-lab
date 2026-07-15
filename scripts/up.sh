@@ -39,11 +39,11 @@ provisioned=""   # lines: short role name port lab_ip
 idx=0
 for entry in "${LAB_VMS[@]}"; do
   idx=$((idx + 1))
-  short="${entry%%:*}"
-  role="${entry##*:}"
-  result="$("${SCRIPTS}/create-vm.sh" "$idx" "$short" "$role" | tail -1)"
+  parse_vm_entry "$entry"
+  result="$("${SCRIPTS}/create-vm.sh" "$idx" "$VM_SHORT" "$VM_ROLE" \
+    "$VM_CPU" "$VM_RAM" "$VM_DISK" | tail -1)"
   read -r name port lab_ip <<<"$result"
-  provisioned+="${short} ${role} ${name} ${port} ${lab_ip}"$'\n'
+  provisioned+="${VM_SHORT} ${VM_ROLE} ${name} ${port} ${lab_ip}"$'\n'
 done
 
 log "Waiting for VMs to accept SSH"

@@ -5,12 +5,13 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 load_config
 
 echo "This will DELETE these UTM VMs and all their data:"
-for entry in "${LAB_VMS[@]}"; do echo "  - $(vm_name "${entry%%:*}")"; done
+for entry in "${LAB_VMS[@]}"; do parse_vm_entry "$entry"; echo "  - $(vm_name "$VM_SHORT")"; done
 read -r -p "Type 'yes' to continue: " confirm
 [[ "$confirm" == "yes" ]] || { warn "Aborted"; exit 1; }
 
 for entry in "${LAB_VMS[@]}"; do
-  name="$(vm_name "${entry%%:*}")"
+  parse_vm_entry "$entry"
+  name="$(vm_name "$VM_SHORT")"
   log "Stopping and deleting ${name}"
   "$UTMCTL" stop "$name" 2>/dev/null || true
   # Wait for the VM to actually stop; a running VM cannot be deleted.

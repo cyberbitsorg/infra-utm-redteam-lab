@@ -118,6 +118,14 @@ find_qemu_img() {
   return 1
 }
 
+# Virtual size of a disk image in bytes, per qemu-img. Prints nothing if the
+# size cannot be read, so callers must handle an empty result.
+disk_bytes() {
+  local img="${1:?image path required}" qi
+  qi="$(find_qemu_img)" || return 0
+  "$qi" info "$img" 2>/dev/null | sed -n 's/.*(\([0-9][0-9]*\) bytes).*/\1/p' | head -1
+}
+
 # --- utmctl -----------------------------------------------------------------
 # utmctl ships inside UTM.app and is usually NOT on PATH. Resolve it once so
 # every script can call "$UTMCTL" and work whether or not you added it to PATH.

@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
-# Create, seed and start one lab VM.
-# Usage: create-vm.sh <index> <short-name> <role>
+# Create, seed and start one lab VM, or bring an existing one in line with the
+# roster.
+# Usage: create-vm.sh <index> <short-name> <role> <cpu> <ram-mib> <disk-gb>
 # Index (>=1) drives deterministic MAC addresses, lab IP and host SSH port.
+# Resources come from the caller (scripts/up.sh parses them out of LAB_VMS), so
+# this script never reads LAB_CPU/LAB_RAM/LAB_DISK_GB itself.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 load_config
 idx="${1:?index required}"
 short="${2:?short name required}"
 role="${3:?role required}"
+cpu="${4:?cpu cores required}"
+ram="${5:?ram in MiB required}"
+disk_gb="${6:?disk size in GB required}"
 
 name="$(vm_name "$short")"
 mac_nat="$(printf '52:54:00:AA:00:%02X' "$idx")"
@@ -39,20 +45,21 @@ esac
 # APFS clone (instant, space-free, sparse-preserving) with a plain-copy fallback.
 cp -c "$base_img" "$vm_disk" 2>/dev/null || cp "$base_img" "$vm_disk"
 
-# Grow to LAB_DISK_GB, but never shrink (the Kali image already exceeds it).
-cur_bytes="$("$QEMU_IMG" info "$vm_disk" | sed -n 's/.*(\([0-9][0-9]*\) bytes).*/\1/p' | head -1)"
-target_bytes=$(( LAB_DISK_GB * 1024 * 1024 * 1024 ))
+# Grow to the requested size, but never shrink (the Kali image already exceeds
+# the usual default).
+cur_bytes="$(disk_bytes "$vm_disk")"
+target_bytes=$(( disk_gb * 1024 * 1024 * 1024 ))
 if [[ -n "$cur_bytes" && "$target_bytes" -gt "$cur_bytes" ]]; then
-  "$QEMU_IMG" resize "$vm_disk" "${LAB_DISK_GB}G" >/dev/null
+  "$QEMU_IMG" resize "$vm_disk" "${disk_gb}G" >/dev/null
 fi
 
 log "Building cloud-init seed for ${name}"
 seed="$(scripts_dir="$(dirname "${BASH_SOURCE[0]}")"; "${scripts_dir}/make-seed.sh" \
   "$short" "$role" "$mac_nat" "$mac_lab" "$lab_ip" | tail -1)"
 
-log "Creating VM ${name} in UTM (mem ${LAB_RAM}MiB, ${LAB_CPU} cpu, ssh->127.0.0.1:${ssh_port})"
+log "Creating VM ${name} in UTM (mem ${ram}MiB, ${cpu} cpu, disk ${disk_gb}G, ssh->127.0.0.1:${ssh_port})"
 vm_id="$(osascript "$(dirname "${BASH_SOURCE[0]}")/create-vm.applescript" \
-  "$name" "$vm_disk" "$seed" "$LAB_RAM" "$LAB_CPU" "$mac_nat" "$mac_lab" "$ssh_port")"
+  "$name" "$vm_disk" "$seed" "$ram" "$cpu" "$mac_nat" "$mac_lab" "$ssh_port")"
 ok "Created ${name} (${vm_id})"
 
 log "Starting ${name}"

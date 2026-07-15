@@ -6,12 +6,14 @@ load_config
 short="${1:?Usage: make ssh VM=<short-name> (e.g. attacker)}"
 
 # Find the VM index to compute its host SSH port.
-idx=0; found=0
+idx=0; found=0; known=""
 for entry in "${LAB_VMS[@]}"; do
   idx=$((idx + 1))
-  [[ "${entry%%:*}" == "$short" ]] && { found=1; break; }
+  parse_vm_entry "$entry"
+  known+="${VM_SHORT} "
+  [[ "$VM_SHORT" == "$short" ]] && { found=1; break; }
 done
-[[ "$found" == "1" ]] || die "Unknown VM '${short}'. Known: ${LAB_VMS[*]%%:*}"
+[[ "$found" == "1" ]] || die "Unknown VM '${short}'. Known: ${known}"
 
 port="$((2200 + idx))"
 key="$(priv_key)"

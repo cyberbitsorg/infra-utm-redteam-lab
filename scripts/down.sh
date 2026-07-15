@@ -4,7 +4,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 load_config
 
 for entry in "${LAB_VMS[@]}"; do
-  name="$(vm_name "${entry%%:*}")"
+  parse_vm_entry "$entry"
+  name="$(vm_name "$VM_SHORT")"
   log "Stopping ${name}"
   "$UTMCTL" stop "$name" 2>/dev/null \
     || osascript -e "tell application \"UTM\" to stop virtual machine named \"${name}\"" 2>/dev/null \
