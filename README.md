@@ -24,7 +24,7 @@ The attacker and targets share an isolated `10.10.10.0/24` segment (a shared App
 - `qemu` for `qemu-img`: `brew install qemu`
 - An ISO builder for cloud-init seeds: `xorriso` (`brew install xorriso`) or the built-in macOS `hdiutil` (used automatically if `xorriso` is absent)
 - `ansible`: `brew install ansible`
-- Free disk space: roughly **~20 GB** for the default (`curated`) build — the Kali attacker (with two kernels + toolset) is the bulk at ~7 GB, the two targets ~2.5 GB each, plus the base images. Choosing `ATTACKER_TOOLSET=large` needs considerably more (plan for 40 GB+).
+- Free disk space: roughly **~20 GB** for the default (`curated`) build. The Kali attacker (with two kernels + toolset) is the bulk at ~7 GB, the two targets ~2.5 GB each, plus the base images. Choosing `ATTACKER_TOOLSET=large` needs considerably more (plan for 40 GB+).
 
 `make preflight` checks the tools and generates an SSH key if you do not have one.
 
@@ -60,7 +60,7 @@ curl http://10.10.10.12          # vuln-web: OWASP Juice Shop
 # vuln-net (10.10.10.13): weak SSH/FTP/Samba services to enumerate and attack
 ```
 
-`docs/attacking.md` is a short operator's guide — where to start on each target,
+`docs/attacking.md` is a short operator's guide: where to start on each target,
 with concrete commands for recon, Juice Shop, and the weak-services box.
 
 ### 4. Tear down
@@ -72,7 +72,7 @@ make destroy    # delete the VMs and generated artifacts
 
 ## What you get
 
-- attacker: Kali Linux ARM64 with a selectable toolset (`ATTACKER_TOOLSET`: a `curated` subset by default — nmap, hydra, sqlmap, ffuf, gobuster, metasploit, SecLists — or the full `kali-linux-headless` / `kali-linux-large` metapackages), and `/etc/hosts` prefilled with the lab targets
+- attacker: Kali Linux ARM64 with a selectable toolset (`ATTACKER_TOOLSET`: a `curated` subset by default with nmap, hydra, sqlmap, ffuf, gobuster, metasploit, SecLists, or the full `kali-linux-headless` / `kali-linux-large` metapackages), and `/etc/hosts` prefilled with the lab targets
 - vuln-web: OWASP Juice Shop, an intentionally vulnerable web app, served on the lab network
 - vuln-net: a services box with deliberately weak SSH, FTP (vsftpd), and Samba for enumeration and credential attacks
 

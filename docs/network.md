@@ -2,7 +2,7 @@
 
 Every VM gets two network interfaces, created by `scripts/create-vm.applescript`.
 
-NAT interface — UTM "emulated" mode (QEMU user/SLIRP)
+NAT interface: UTM "emulated" mode (QEMU user/SLIRP)
 
 - Purpose: internet access for package installs, and host-to-guest SSH
 - The host reaches each guest through a port forward on `127.0.0.1`: attacker on
@@ -12,7 +12,7 @@ NAT interface — UTM "emulated" mode (QEMU user/SLIRP)
   honours the `hostfwd` port forward. UTM "shared" (vmnet-shared) gives internet
   but silently drops port forwards, so SSH-over-forward would never come up
 
-Lab interface — UTM "host" mode (Apple vmnet-host)
+Lab interface: UTM "host" mode (Apple vmnet-host)
 
 - Purpose: the isolated segment where the exercise happens
 - Static addresses on `10.10.10.0/24`, assigned by cloud-init and matched by MAC:
@@ -22,7 +22,7 @@ Lab interface — UTM "host" mode (Apple vmnet-host)
   other on `10.10.10.0/24` out of the box. (Two "emulated" NICs would NOT bridge:
   each is its own private SLIRP net, so guest-to-guest traffic never flows.)
 - "host" mode is host-only with no gateway, so the segment has no route to the
-  internet or your home network — it stays isolated
+  internet or your home network, so it stays isolated
 
 ```
         macOS host (Apple Silicon)

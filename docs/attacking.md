@@ -1,14 +1,14 @@
 # Attacking the lab
 
 A short operator's guide: how to work from the Kali attacker box and where to
-start on each target. Everything here is for **your own lab** — the machines are
+start on each target. Everything here is for **your own lab**. The machines are
 intentionally vulnerable and isolated on `10.10.10.0/24`.
 
 The layout after `make up`:
 
 | Host | Lab IP | What it is |
 |------|--------|------------|
-| `attacker` | `10.10.10.11` | Kali — where you work |
+| `attacker` | `10.10.10.11` | Kali, where you work |
 | `vuln-web` | `10.10.10.12` | OWASP Juice Shop (web) |
 | `vuln-net` | `10.10.10.13` | Weak SSH / FTP / Samba services |
 
@@ -27,12 +27,12 @@ sudo apt update && sudo apt full-upgrade -y
 ```
 
 Tip: if you want a GUI (Burp Suite, a browser), open the `redteam-attacker`
-console in UTM — the box installs the standard Kali kernel so the display works.
+console in UTM. The box installs the standard Kali kernel so the display works.
 Everything below is terminal-only and works over SSH.
 
 ## Recon first
 
-Sweep the segment, then fingerprint each host — enumerate before you exploit.
+Sweep the segment, then fingerprint each host. Enumerate before you exploit.
 
 ```bash
 # what's alive on the lab net
@@ -45,7 +45,7 @@ nmap -sV -sC -p- 10.10.10.12 10.10.10.13
 You should see `80/http` on `.12`, and `21/ftp 22/ssh 80/http 445/microsoft-ds`
 on `.13`. Match each open port to a follow-up ([nmap docs](https://nmap.org/book/man.html)).
 
-## vuln-web — OWASP Juice Shop (10.10.10.12)
+## vuln-web: OWASP Juice Shop (10.10.10.12)
 
 [Juice Shop](https://owasp.org/www-project-juice-shop/) is a modern, deliberately
 broken shop with a built-in scoreboard of challenges. Start with web recon:
@@ -59,18 +59,18 @@ ffuf -u http://10.10.10.12/FUZZ -w /usr/share/seclists/Discovery/Web-Content/com
 
 Then work the classic bugs:
 
-- **SQL injection login bypass** — log in as admin with `' OR 1=1--` in the email
+- **SQL injection login bypass:** log in as admin with `' OR 1=1--` in the email
   field. Automate deeper injection with [`sqlmap`](https://sqlmap.org/).
-- **Broken access control** — inspect the API calls in your browser's dev tools
+- **Broken access control:** inspect the API calls in your browser's dev tools
   (or Burp) and try changing IDs (`/api/Users/1`, basket IDs, etc.).
-- **XSS** — the search field and several inputs reflect unsanitised HTML.
-- **Sensitive data / hidden endpoints** — check the JavaScript bundles and
+- **XSS:** the search field and several inputs reflect unsanitised HTML.
+- **Sensitive data / hidden endpoints:** check the JavaScript bundles and the
   `/ftp` directory the app exposes.
 
 The official [Juice Shop companion guide](https://pwning.owasp-juice.shop/) walks
-every challenge if you get stuck — treat it as the answer key, not the first stop.
+every challenge if you get stuck. Treat it as the answer key, not the first stop.
 
-## vuln-net — weak services (10.10.10.13)
+## vuln-net: weak services (10.10.10.13)
 
 This box is the "enumerate the infra" target. Its intended weaknesses:
 
@@ -116,7 +116,7 @@ msf6 > hosts                          # review what you found
 
 A repeatable loop for any target: **enumerate → match a service/version to a
 known issue ([searchsploit](https://www.exploit-db.com/searchsploit)) → exploit →
-loot → pivot**. On this flat lab there's nothing to pivot to yet — see
+loot → pivot**. On this flat lab there's nothing to pivot to yet, so see
 `docs/extending.md` for adding a second subnet or an AD phase.
 
 ## Reset between sessions
@@ -132,5 +132,5 @@ make configure
 ## Rules of engagement
 
 Only ever run this against the lab you built. The tools here are for authorised,
-educational use on machines you own — never point them at anything you don't have
+educational use on machines you own. Never point them at anything you don't have
 explicit permission to test.

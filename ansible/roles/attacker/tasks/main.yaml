@@ -25,7 +25,7 @@
 # virtio_gpu / DRM framebuffer driver, so UTM's display stays blank ("Display
 # output is not active"). Install the standard Kali kernel (which has virtio_gpu)
 # and make grub boot it by default. IMPORTANT: leave the cloud kernel installed
-# as a fallback — do NOT purge it. Purging it wedged the boot (grub picked a
+# as a fallback; do NOT purge it. Purging it wedged the boot (grub picked a
 # half-removed entry and the guest hung). We only change grub's default. The lab
 # is still driven over SSH; this is only so you can eyeball the attacker.
 - name: Install the standard Kali kernel (includes virtio_gpu for the console)
