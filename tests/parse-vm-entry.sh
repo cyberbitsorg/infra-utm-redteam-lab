@@ -66,6 +66,10 @@ parse_vm_entry "web:vuln-web cpu=1"
 check "name and role may differ: name" "web"      "$VM_SHORT"
 check "name and role may differ: role" "vuln-web" "$VM_ROLE"
 
+parse_vm_entry "box:role:tag cpu=4"
+check "head splits at the FIRST colon: name" "box"      "$VM_SHORT"
+check "head splits at the FIRST colon: role" "role:tag" "$VM_ROLE"
+
 expect_reject "unknown key"          "box:role mem=4096"
 expect_reject "non-numeric value"    "box:role ram=8gb"
 expect_reject "zero is not valid"    "box:role cpu=0"
