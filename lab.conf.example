@@ -6,7 +6,10 @@
 LAB_PREFIX="redteam"
 
 # User created inside every VM (cloud-init). Ansible connects as this user.
-LAB_USER="operator"
+# Avoid a name that is already a system group in the guest: Debian and Kali
+# ship legacy groups like operator (GID 37), staff, games and users. The
+# cloud-init template handles the clash, but a free name keeps it simple.
+LAB_USER="redteam"
 
 # Public SSH key injected into every VM. Generated automatically by
 # scripts/preflight.sh if the file does not exist.

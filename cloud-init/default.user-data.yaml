@@ -8,6 +8,16 @@ preserve_hostname: false
 
 users:
   - name: "@@LAB_USER@@"
+    # no_user_group passes --no-user-group to useradd, so it does not try to
+    # create a group named after the user. Without it, any LAB_USER that
+    # happens to match an existing group fails the whole users_groups module:
+    # Debian and Kali ship legacy system groups (operator is GID 37, and staff,
+    # games, users and more exist too), and useradd then exits 9 with "group
+    # <name> exists". The user is never created, the key never lands, and
+    # every SSH login fails with "Permission denied (publickey)" while the VM
+    # otherwise boots fine. The user's primary group becomes the useradd
+    # default (users); sudo comes from the groups list below.
+    no_user_group: true
     groups: [sudo]
     shell: /bin/bash
     sudo: "ALL=(ALL) NOPASSWD:ALL"
