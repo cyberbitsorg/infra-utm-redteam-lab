@@ -12,9 +12,16 @@ ANSIBLE_DIR="${REPO_ROOT}/ansible"
 INVENTORY_FILE="${ANSIBLE_DIR}/inventory/hosts.generated.yaml"
 
 # --- Logging ----------------------------------------------------------------
+# All four write to stderr, so a script's stdout carries only its data. That
+# matters because callers capture that data: up.sh does
+# result="$(create-vm.sh ... | tail -1)" and create-vm.sh does
+# seed="$(make-seed.sh ... | tail -1)". When log/ok wrote to stdout, every
+# message from those scripts was swallowed by the command substitution and
+# never reached the terminal, including the reconcile telling you it was about
+# to restart a VM.
 _c() { printf '\033[%sm' "$1"; }
-log()  { printf '%s%s%s %s\n' "$(_c '1;34')" "==>" "$(_c 0)" "$*"; }
-ok()   { printf '%s%s%s %s\n' "$(_c '1;32')" " ok" "$(_c 0)" "$*"; }
+log()  { printf '%s%s%s %s\n' "$(_c '1;34')" "==>" "$(_c 0)" "$*" >&2; }
+ok()   { printf '%s%s%s %s\n' "$(_c '1;32')" " ok" "$(_c 0)" "$*" >&2; }
 warn() { printf '%s%s%s %s\n' "$(_c '1;33')" " ! " "$(_c 0)" "$*" >&2; }
 die()  { printf '%s%s%s %s\n' "$(_c '1;31')" "err" "$(_c 0)" "$*" >&2; exit 1; }
 
