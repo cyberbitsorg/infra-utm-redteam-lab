@@ -102,7 +102,7 @@ Change the roster in `lab.conf`, then adjust Ansible:
 
 Re-run `make up` to apply. Ansible is idempotent, so existing VMs are only updated, never rebuilt.
 
-Resource changes work the same way: raise `cpu`, `ram` or `disk` on a roster entry and the next `make up` stops that VM, applies the change and starts it again. VMs you did not change are left running. Disks only grow, so lowering `disk=` warns and does nothing.
+Resource changes work only for `cpu` and `ram`: raise either on a roster entry and the next `make up` stops that VM, applies the change and starts it again. VMs you did not change are left running. `disk=` is applied only when a VM is first created; raising it later has no effect on a VM that already exists, since UTM has already imported the disk into its own bundle by then. To grow the disk of an existing VM, run `make destroy` then `make up`. Disks are never shrunk either way, so lowering `disk=` on an existing VM just warns and leaves it as is.
 
 ## Useful commands
 

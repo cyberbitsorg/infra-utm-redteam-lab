@@ -11,8 +11,10 @@ The lab is designed to grow. Two common directions:
 2. Create an Ansible role at `ansible/roles/vuln-ssh/tasks/main.yaml`
 3. Add a play for it in `ansible/playbook.yaml` targeting the `vuln-ssh` group
 4. Optionally add `ansible/group_vars/vuln-ssh.yaml` for its variables
-5. Run `make up` again. Existing VMs are left untouched; only the new one is
-   created and configured
+5. Run `make up` again. The new VM is created and configured. Existing VMs are
+   reconciled against the roster: a changed `cpu=` or `ram=` stops that VM,
+   applies it, and starts it again, but a changed `disk=` is not applied to a
+   VM that already exists (see "Making changes" in the README)
 
 The index of a VM is its position in `LAB_VMS`, which fixes its SSH port
 (`2200 + index`) and lab IP (`10.10.10.{10 + index}`).

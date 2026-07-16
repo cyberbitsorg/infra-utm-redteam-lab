@@ -63,10 +63,15 @@ ATTACKER_TOOLSET="curated"
 # names none of them uses the defaults above. Give the attacker room if you
 # raise ATTACKER_TOOLSET: kali-linux-large does not fit in 20 GB.
 #
-# Changing a field for a VM that already exists makes the next 'make up' stop
-# that VM, apply the change, and start it again. VMs whose resources did not
-# change are never restarted. Disks only ever grow: lowering disk= warns and
-# leaves the disk untouched.
+# Changing cpu= or ram= for a VM that already exists makes the next 'make up'
+# stop that VM, apply the change, and start it again. VMs whose cpu/ram did
+# not change are never restarted.
+#
+# disk= is only applied when a VM is first created: UTM imports the staged
+# disk into its own bundle at creation time, so raising disk= later has no
+# effect on a VM that already exists. To grow the disk of an existing VM, run
+# 'make destroy' then 'make up'. Disks are never shrunk either way: lowering
+# disk= on an existing VM warns and leaves it untouched.
 #
 # Add a line plus a matching Ansible role to grow the lab (see README).
 LAB_VMS=(

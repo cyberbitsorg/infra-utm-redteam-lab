@@ -26,14 +26,27 @@ warn() { printf '%s%s%s %s\n' "$(_c '1;33')" " ! " "$(_c 0)" "$*" >&2; }
 die()  { printf '%s%s%s %s\n' "$(_c '1;31')" "err" "$(_c 0)" "$*" >&2; exit 1; }
 
 # --- Config -----------------------------------------------------------------
+# Validate the lab.conf variables every script depends on. Split out from
+# load_config so tests can exercise it directly against fake values, without
+# needing a real lab.conf on disk.
+require_lab_conf_vars() {
+  : "${LAB_PREFIX:?LAB_PREFIX missing in lab.conf}"
+  : "${LAB_USER:?LAB_USER missing in lab.conf}"
+  : "${LAB_SSH_KEY:?LAB_SSH_KEY missing in lab.conf}"
+  # parse_vm_entry falls back to these for any roster entry that omits
+  # cpu=/ram=/disk=, so every script that touches the roster needs them, not
+  # just create-vm.sh.
+  : "${LAB_CPU:?LAB_CPU missing in lab.conf}"
+  : "${LAB_RAM:?LAB_RAM missing in lab.conf}"
+  : "${LAB_DISK_GB:?LAB_DISK_GB missing in lab.conf}"
+}
+
 load_config() {
   local cfg="${REPO_ROOT}/lab.conf"
   [[ -f "$cfg" ]] || die "lab.conf not found. Run: cp lab.conf.example lab.conf"
   # shellcheck disable=SC1090
   source "$cfg"
-  : "${LAB_PREFIX:?LAB_PREFIX missing in lab.conf}"
-  : "${LAB_USER:?LAB_USER missing in lab.conf}"
-  : "${LAB_SSH_KEY:?LAB_SSH_KEY missing in lab.conf}"
+  require_lab_conf_vars
   # Expand ~ in the key path.
   LAB_SSH_KEY="${LAB_SSH_KEY/#\~/$HOME}"
   LAB_SSH_KEY="${LAB_SSH_KEY/#\$\{HOME\}/$HOME}"
@@ -151,16 +164,25 @@ vm_exists() {
 }
 
 # Stop a VM and wait for it to really be stopped. utmctl stop asks the guest to
-# shut down, which is not instant. Returns 1 if it is still running after the
-# timeout, so callers can decide whether that is fatal.
+# shut down, which is not instant, and passes through intermediate statuses
+# (e.g. "stopping") before landing on "stopped". Waits for exactly "stopped",
+# not merely "not started", so a caller that immediately reconfigures the VM
+# never races a UTM that is still mid-shutdown. Returns early (success) if the
+# status is empty, meaning the VM does not exist, so a caller like destroy.sh
+# does not burn the full timeout on a VM that is already gone. Returns 1 if it
+# is still not stopped after the timeout, so callers can decide whether that
+# is fatal.
 # Usage: stop_vm_and_wait <name> [timeout_seconds, default 60]
 stop_vm_and_wait() {
-  local name="${1:?vm name required}" timeout="${2:-60}" waited=0
+  local name="${1:?vm name required}" timeout="${2:-60}" waited=0 status
   "$UTMCTL" stop "$name" >/dev/null 2>&1 \
     || osascript -e "tell application \"UTM\" to stop virtual machine named \"${name}\"" >/dev/null 2>&1 \
     || true
   while [[ "$waited" -lt "$timeout" ]]; do
-    [[ "$("$UTMCTL" status "$name" 2>/dev/null)" == "started" ]] || return 0
+    status="$("$UTMCTL" status "$name" 2>/dev/null || true)"
+    if [[ -z "$status" || "$status" == "stopped" ]]; then
+      return 0
+    fi
     sleep 1
     waited=$((waited + 1))
   done

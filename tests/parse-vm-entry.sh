@@ -78,6 +78,50 @@ expect_reject "field without ="      "box:role bogus"
 expect_reject "empty name"          ":role cpu=2"
 
 echo
+echo "require_lab_conf_vars:"
+
+# A complete lab.conf, so each check below fails on exactly one missing var.
+LAB_PREFIX="redteam"
+LAB_USER="operator"
+LAB_SSH_KEY="/tmp/id_ed25519_redteam.pub"
+# LAB_CPU / LAB_RAM / LAB_DISK_GB are already set above, standing in for
+# load_config's resource defaults.
+
+# expect_config_reject <label> <var>: require_lab_conf_vars must die cleanly
+# when <var> is unset, not fail with set -u's raw "unbound variable" (finding
+# 3: parse_vm_entry hard-depends on LAB_CPU/LAB_RAM/LAB_DISK_GB, but
+# load_config used to validate none of them). Runs in a subshell because die
+# exits.
+expect_config_reject() {
+  local label="$1" var="$2" out
+  if out="$( (unset "$var"; require_lab_conf_vars) 2>&1 )"; then
+    printf '  FAIL %s: require_lab_conf_vars accepted a missing %s\n' "$label" "$var"
+    fails=$((fails + 1))
+    return
+  fi
+  if [[ "$out" == *"unbound variable"* ]]; then
+    printf '  FAIL %s: died with "unbound variable" instead of a clean message: %s\n' "$label" "$out"
+    fails=$((fails + 1))
+  elif [[ "$out" == *"$var"* && "$out" == *"missing in lab.conf"* ]]; then
+    printf '  ok   %s\n' "$label"
+  else
+    printf '  FAIL %s: unexpected message: %s\n' "$label" "$out"
+    fails=$((fails + 1))
+  fi
+}
+
+expect_config_reject "missing LAB_CPU dies cleanly"      "LAB_CPU"
+expect_config_reject "missing LAB_RAM dies cleanly"      "LAB_RAM"
+expect_config_reject "missing LAB_DISK_GB dies cleanly"  "LAB_DISK_GB"
+
+if ( require_lab_conf_vars ) >/dev/null 2>&1; then
+  printf '  ok   %s\n' "complete config passes"
+else
+  printf '  FAIL %s\n' "complete config passes: require_lab_conf_vars rejected a full set of vars"
+  fails=$((fails + 1))
+fi
+
+echo
 if [[ "$fails" -eq 0 ]]; then
   ok "parse_vm_entry: all tests passed"
 else

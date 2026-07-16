@@ -21,13 +21,15 @@ mac_lab="$(printf '52:54:00:10:10:%02X' "$idx")"
 lab_ip="10.10.10.$((10 + idx))"
 ssh_port="$((2200 + idx))"
 
-# Bring an existing VM in line with the roster: cpu/ram through UTM, disk
-# through qemu-img. Only stops and starts the VM when something really differs,
-# so a repeat 'make up' on an unchanged lab restarts nothing.
+# Bring an existing VM in line with the roster: cpu/ram through UTM. A
+# roster disk= change cannot be applied to a VM that already exists (see the
+# comment below), so it is only ever compared and reported, never acted on.
+# Only stops and starts the VM when cpu/ram really differ, so a repeat
+# 'make up' on an unchanged lab restarts nothing.
 reconcile_existing_vm() {
   local want_cpu="$1" want_ram="$2" want_disk_gb="$3"
   local cur cur_cpu cur_ram disk candidate cur_bytes want_bytes cur_gb
-  local change_hw=0 grow_disk=0 msg
+  local change_hw=0
 
   cur="$(osascript "${REPO_ROOT}/scripts/vm-config.applescript" get "$name" 2>/dev/null || true)"
   read -r cur_cpu cur_ram <<<"$cur"
@@ -39,7 +41,13 @@ reconcile_existing_vm() {
     change_hw=1
   fi
 
-  # The working disk is whichever of the two formats create-vm.sh produced.
+  # Disk size is compare-and-report ONLY, never acted on. UTM imports and
+  # converts this staging file into its own bundle at VM creation time (see
+  # the note by "cp -c" below); once a VM exists in UTM, this file is not its
+  # live disk and resizing it here would change nothing the VM uses while
+  # making the staging file lie about the VM's real size on every later run.
+  # So the disk never contributes to the restart decision, and the file is
+  # never written here.
   disk=""
   for candidate in "${GEN_DIR}/${name}.qcow2" "${GEN_DIR}/${name}.raw"; do
     if [[ -f "$candidate" ]]; then
@@ -53,38 +61,32 @@ reconcile_existing_vm() {
     if [[ -n "$cur_bytes" ]]; then
       cur_gb=$(( cur_bytes / 1024 / 1024 / 1024 ))
       if [[ "$want_bytes" -gt "$cur_bytes" ]]; then
-        grow_disk=1
+        warn "${name}: disk=${want_disk_gb}G is larger than the ${cur_gb}G it was created with. A disk cannot be grown on a VM that already exists in UTM; run 'make destroy' then 'make up' to rebuild it at the new size."
       elif [[ "$want_bytes" -lt "$cur_bytes" ]]; then
         warn "${name}: disk=${want_disk_gb} is below the current ${cur_gb}G. Disks are never shrunk, leaving it as is."
       fi
+    else
+      warn "${name}: could not check its disk size (qemu-img could not read ${disk})"
     fi
+  else
+    warn "${name}: could not check its disk size (no staging file in ${GEN_DIR}, was generated/ cleared after this VM was created?)"
   fi
 
-  if [[ "$change_hw" -eq 0 && "$grow_disk" -eq 0 ]]; then
+  if [[ "$change_hw" -eq 0 ]]; then
     ok "${name} unchanged (${cur_cpu} cpu, ${cur_ram} MiB)"
     return 0
   fi
 
-  msg="${name}: ${cur_cpu}->${want_cpu} cpu, ${cur_ram}->${want_ram} MiB"
-  if [[ "$grow_disk" -eq 1 ]]; then
-    msg="${msg}, disk ${cur_gb}G->${want_disk_gb}G"
-  fi
-  log "${msg}, restarting"
+  log "${name}: ${cur_cpu}->${want_cpu} cpu, ${cur_ram}->${want_ram} MiB, restarting"
 
   if ! stop_vm_and_wait "$name"; then
     warn "${name}: did not stop within 60s, leaving it untouched"
     return 0
   fi
-  if [[ "$change_hw" -eq 1 ]]; then
-    osascript "${REPO_ROOT}/scripts/vm-config.applescript" set "$name" "$want_cpu" "$want_ram" >/dev/null
-  fi
-  if [[ "$grow_disk" -eq 1 ]]; then
-    QEMU_IMG="$(find_qemu_img)" || die "qemu-img not found"
-    "$QEMU_IMG" resize "$disk" "${want_disk_gb}G" >/dev/null
-  fi
+  osascript "${REPO_ROOT}/scripts/vm-config.applescript" set "$name" "$want_cpu" "$want_ram" >/dev/null
   "$UTMCTL" start "$name" >/dev/null 2>&1 \
     || osascript -e "tell application \"UTM\" to start virtual machine named \"${name}\""
-  ok "${name} updated. cloud-init grows the root filesystem on this boot."
+  ok "${name} updated: cpu and/or ram applied."
 }
 
 # An existing VM is reconciled, not recreated.
@@ -109,10 +111,16 @@ case "$img_fmt" in
   *)     vm_disk="${GEN_DIR}/${name}.${base_img##*.}" ;;
 esac
 # APFS clone (instant, space-free, sparse-preserving) with a plain-copy fallback.
+# This file is staging input only. create-vm.applescript hands it to UTM once,
+# and UTM imports and converts it into its own VM bundle under its app
+# container, in a format of its choosing. From that point on, this staged
+# file here in generated/ is never read or written by the running VM, so it
+# must only be resized here, before creation, never afterward.
 cp -c "$base_img" "$vm_disk" 2>/dev/null || cp "$base_img" "$vm_disk"
 
 # Grow to the requested size, but never shrink (the Kali image already exceeds
-# the usual default).
+# the usual default). This runs BEFORE the VM is created below, so the size
+# really does land in the VM UTM is about to build.
 cur_bytes="$(disk_bytes "$vm_disk")"
 target_bytes=$(( disk_gb * 1024 * 1024 * 1024 ))
 if [[ -n "$cur_bytes" && "$target_bytes" -gt "$cur_bytes" ]]; then
