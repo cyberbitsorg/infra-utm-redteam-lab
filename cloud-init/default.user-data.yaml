@@ -28,6 +28,21 @@ users:
 ssh_pwauth: false
 disable_root: true
 
+write_files:
+  # Disable periodic apt in this hands-off, throwaway lab. Without it,
+  # apt-daily-upgrade runs unattended-upgrades in the background and restarts
+  # openssh; a restart can orphan the running sshd, which keeps holding :22 and
+  # blocks ssh.socket from rebinding ("Address already in use"). ssh.service
+  # then fails its dependency, /run/sshd is never recreated, and every new
+  # connection is closed before the banner. Ansible manages packages here, so
+  # nothing needs the periodic timers.
+  - path: /etc/apt/apt.conf.d/99lab-no-periodic
+    content: |
+      APT::Periodic::Update-Package-Lists "0";
+      APT::Periodic::Download-Upgradeable-Packages "0";
+      APT::Periodic::Unattended-Upgrade "0";
+      APT::Periodic::AutocleanInterval "0";
+
 package_update: true
 packages:
   - python3
