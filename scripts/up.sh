@@ -21,7 +21,8 @@ run_ansible() {
   ansible-galaxy collection install -r "${ANSIBLE_DIR}/requirements.yaml" >/dev/null
   log "Running Ansible playbook"
   ( cd "$REPO_ROOT" && ansible-playbook "${ANSIBLE_DIR}/playbook.yaml" \
-      -e "attacker_toolset=${ATTACKER_TOOLSET:-curated}" )
+      -e "attacker_toolset=${ATTACKER_TOOLSET:-curated}" \
+      -e "attacker_gui=${ATTACKER_GUI:-none}" )
   ok "Configuration complete"
 }
 

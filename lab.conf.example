@@ -51,6 +51,19 @@ KALI_IMG_FILE="kali-genericcloud-arm64.raw"
 #   large    : 'kali-linux-large' (an even broader set)
 ATTACKER_TOOLSET="curated"
 
+# --- Attacker desktop (optional GUI) ----------------------------------------
+# The attacker is headless by default (the base images ship no desktop). Set
+# this to 'xfce' to install a lightweight XFCE desktop that renders in UTM's own
+# window (via the virtio-gpu console the attacker role already configures) and
+# auto-logs-in the lab user. 'none' (default) installs nothing.
+#
+# A desktop wants more memory: give the attacker ram=3072 or more (the default
+# roster below already uses 4096) plus a little extra disk. Turning this back to
+# 'none' does NOT uninstall an already-installed desktop (changes are
+# non-destructive, like disk=); run 'make destroy' then 'make up' for a clean
+# headless box again.
+ATTACKER_GUI="none"
+
 # --- VM roster --------------------------------------------------------------
 # Each entry: "name:role [cpu=N] [ram=MiB] [disk=GB]"
 #
