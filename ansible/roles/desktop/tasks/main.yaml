@@ -1,0 +1,72 @@
+---
+# Optional XFCE desktop for the attacker, rendered in UTM's own window via the
+# virtio-gpu console the attacker role already configures. Enabled by
+# ATTACKER_GUI=xfce in lab.conf (passed in as -e attacker_gui). This role runs
+# AFTER the attacker role, so the machine is already on the standard console
+# kernel and LightDM can start straight away, no extra reboot needed.
+
+- name: Preseed LightDM as the default display manager
+  # kali-desktop-xfce can offer a choice of display manager; pin LightDM up front
+  # so the non-interactive apt install never falls back to another one, which
+  # would leave our autologin drop-in unused.
+  ansible.builtin.debconf:
+    name: lightdm
+    question: shared/default-x-display-manager
+    vtype: select
+    value: lightdm
+
+- name: Install the XFCE desktop and LightDM
+  ansible.builtin.apt:
+    name:
+      - kali-desktop-xfce
+      - lightdm
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure the passwordless-login groups exist
+  ansible.builtin.group:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - nopasswdlogin
+    - autologin
+
+- name: Allow the lab user to log in without a password
+  # Which group LightDM's autologin PAM stack requires is distro/version
+  # dependent, so the lab user joins both. Harmless where a group is unused.
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups:
+      - nopasswdlogin
+      - autologin
+    append: true
+
+- name: Configure LightDM to auto-login the lab user into XFCE
+  # Drop-in, never edit the packaged lightdm.conf. Inline content is idempotent:
+  # unchanged content reports 'ok'.
+  ansible.builtin.copy:
+    dest: /etc/lightdm/lightdm.conf.d/10-lab-autologin.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Seat:*]
+      autologin-user={{ ansible_user }}
+      autologin-user-timeout=0
+      autologin-session=xfce
+
+- name: Read the current default systemd target
+  ansible.builtin.command: systemctl get-default
+  register: desktop_current_target
+  changed_when: false
+
+- name: Boot to the graphical target by default
+  ansible.builtin.command: systemctl set-default graphical.target
+  when: desktop_current_target.stdout != 'graphical.target'
+
+- name: Enable and start LightDM
+  ansible.builtin.systemd:
+    name: lightdm
+    enabled: true
+    state: started
