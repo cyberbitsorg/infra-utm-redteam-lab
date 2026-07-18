@@ -50,6 +50,13 @@ packages:
 
 runcmd:
   - [systemctl, enable, --now, qemu-guest-agent]
+  # Pre-create Ansible's remote temp dir. Every play in the playbook runs with
+  # become: true, so Ansible operates as root and its remote_tmp resolves to
+  # /root/.ansible/tmp. If that dir is missing, Ansible creates it on the first
+  # module and prints "Module remote_tmp ... did not exist and was created with
+  # a mode of 0700". Creating it here (root-owned, 0700 -- exactly what Ansible
+  # wants) makes it already exist, so the warning never appears.
+  - [install, -d, -m, "0700", -o, root, -g, root, /root/.ansible/tmp]
 
 # Grow the root filesystem to fill the resized virtual disk.
 growpart:

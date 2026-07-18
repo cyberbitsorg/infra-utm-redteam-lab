@@ -28,11 +28,18 @@ rows="$(cat)"
   done <<<"$rows"
 
   echo "  children:"
+  # One group per role. The group name is derived from the role, not equal to
+  # it, for two reasons Ansible warns about otherwise: a role like 'vuln-web'
+  # is not a valid group identifier (hyphens), and a host and group with the
+  # same name (short name == role, e.g. attacker:attacker) collide. Prefixing
+  # 'role_' and mapping '-' to '_' avoids both. The playbook targets these
+  # 'role_*' groups; --tags still uses the plain role names.
   # Unique roles, preserving first-seen order.
   roles="$(printf '%s\n' "$rows" | awk 'NF{print $2}' | awk '!seen[$0]++')"
   while read -r role; do
     [[ -z "$role" ]] && continue
-    echo "    ${role}:"
+    group="role_$(printf '%s' "$role" | tr '-' '_')"
+    echo "    ${group}:"
     echo "      hosts:"
     while read -r short r2 name port lab_ip; do
       [[ "$r2" == "$role" ]] && echo "        ${short}:"

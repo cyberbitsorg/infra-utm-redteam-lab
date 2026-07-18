@@ -133,7 +133,11 @@ cp -c "$base_img" "$vm_disk" 2>/dev/null || cp "$base_img" "$vm_disk"
 cur_bytes="$(disk_bytes "$vm_disk")"
 target_bytes=$(( disk_gb * 1024 * 1024 * 1024 ))
 if [[ -n "$cur_bytes" && "$target_bytes" -gt "$cur_bytes" ]]; then
-  "$QEMU_IMG" resize "$vm_disk" "${disk_gb}G" >/dev/null
+  # Pass the format explicitly. resize opens the image read-write, and for a
+  # raw disk qemu-img would otherwise probe the format and print a warning
+  # ("Image format was not specified ... probing guessed raw") on every run.
+  # img_fmt came straight from `qemu-img info` above, so it is always set.
+  "$QEMU_IMG" resize -f "$img_fmt" "$vm_disk" "${disk_gb}G" >/dev/null
 fi
 
 log "Building cloud-init seed for ${name}"

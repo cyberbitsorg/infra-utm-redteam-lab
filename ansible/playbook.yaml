@@ -11,21 +11,21 @@
       tags: [common, base]
 
 - name: Configure attacker box
-  hosts: attacker
+  hosts: role_attacker
   become: true
   roles:
     - role: attacker
       tags: [attacker]
 
 - name: Configure vulnerable web target
-  hosts: vuln-web
+  hosts: role_vuln_web
   become: true
   roles:
     - role: vuln-web
       tags: [vuln-web, apps]
 
 - name: Configure vulnerable services target
-  hosts: vuln-net
+  hosts: role_vuln_net
   become: true
   roles:
     - role: vuln-net
