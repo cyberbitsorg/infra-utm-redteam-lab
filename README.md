@@ -104,6 +104,19 @@ Re-run `make up` to apply. Ansible is idempotent, so existing VMs are only updat
 
 Resource changes work only for `cpu` and `ram`: raise either on a roster entry and the next `make up` stops that VM, applies the change and starts it again. VMs you did not change are left running. `disk=` is applied only when a VM is first created; raising it later has no effect on a VM that already exists, since UTM has already imported the disk into its own bundle by then. To grow the disk of an existing VM, run `make destroy` then `make up`. Disks are never shrunk either way, so lowering `disk=` on an existing VM just warns and leaves it as is.
 
+## Directory layout
+
+Two directories hold large or machine-written files. Both are gitignored, and they have deliberately opposite lifecycles, so keep them separate:
+
+| Directory | Holds | Lifecycle |
+|-----------|-------|-----------|
+| `images/` | The ARM64 base images (Kali for the attacker, Ubuntu for the targets) and their `SHA256SUMS`, downloaded and verified once by `scripts/fetch-images.sh` | Shared and reused read-only by every VM and every rebuild. Downloading them is slow (multiple GB), so they are **not** touched by `make destroy`. Delete by hand to force a re-fetch. |
+| `generated/` | Per-VM staging disks (`<vm>.raw` / `<vm>.qcow2`, cloned from a base image) and cloud-init seed ISOs (`<vm>.seed.iso`) | Rebuilt on every `make up` and wiped by `make destroy`. The staging disks are throwaway input: UTM imports each into its own VM bundle at creation and never reads `generated/` again. |
+
+Combining the two would let `make destroy` delete the multi-GB base images along with the disposable build artifacts, forcing a full re-download on the next build. The split is what keeps the expensive downloads safe from the per-deploy churn.
+
+Other generated, gitignored files: `lab.conf` (your config, copied from `lab.conf.example`) and `ansible/inventory/hosts.generated.yaml` (written from the running VMs by `scripts/gen-inventory.sh`).
+
 ## Useful commands
 
 ```bash
