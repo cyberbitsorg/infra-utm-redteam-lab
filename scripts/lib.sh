@@ -188,3 +188,18 @@ stop_vm_and_wait() {
   done
   return 1
 }
+
+# UTM's status for a VM ("started", "stopped", "paused", ...), or empty if the
+# VM does not exist.
+vm_status() {
+  "$UTMCTL" status "${1:?vm name required}" 2>/dev/null || true
+}
+
+# Start a VM through utmctl, falling back to AppleScript on the odd UTM build
+# where utmctl is unhappy. Both create-vm.sh paths (new VM, reconciled VM) route
+# through here so the start command lives in exactly one place.
+start_vm() {
+  local name="${1:?vm name required}"
+  "$UTMCTL" start "$name" >/dev/null 2>&1 \
+    || osascript -e "tell application \"UTM\" to start virtual machine named \"${name}\"" >/dev/null 2>&1
+}

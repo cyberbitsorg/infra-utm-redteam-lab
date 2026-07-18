@@ -72,8 +72,18 @@ reconcile_existing_vm() {
     warn "${name}: could not check its disk size (no staging file in ${GEN_DIR}, was generated/ cleared after this VM was created?)"
   fi
 
+  # No hardware change: nothing to reconfigure, but 'make up' must still bring a
+  # stopped VM up (after a reboot or 'make down' the roster is unchanged yet the
+  # VM is not running). Without this, up.sh would wait on SSH for a VM nothing
+  # ever started and time out. Starting an already-running VM is a no-op.
   if [[ "$change_hw" -eq 0 ]]; then
-    ok "${name} unchanged (${cur_cpu} cpu, ${cur_ram} MiB)"
+    if [[ "$(vm_status "$name")" == "started" ]]; then
+      ok "${name} unchanged (${cur_cpu} cpu, ${cur_ram} MiB)"
+    else
+      log "${name}: unchanged but not running, starting it"
+      start_vm "$name"
+      ok "${name} started (${cur_cpu} cpu, ${cur_ram} MiB)"
+    fi
     return 0
   fi
 
@@ -84,8 +94,7 @@ reconcile_existing_vm() {
     return 0
   fi
   osascript "${REPO_ROOT}/scripts/vm-config.applescript" set "$name" "$want_cpu" "$want_ram" >/dev/null
-  "$UTMCTL" start "$name" >/dev/null 2>&1 \
-    || osascript -e "tell application \"UTM\" to start virtual machine named \"${name}\""
+  start_vm "$name"
   ok "${name} updated: cpu and/or ram applied."
 }
 
@@ -137,7 +146,7 @@ vm_id="$(osascript "$(dirname "${BASH_SOURCE[0]}")/create-vm.applescript" \
 ok "Created ${name} (${vm_id})"
 
 log "Starting ${name}"
-"$UTMCTL" start "$name" >/dev/null 2>&1 || osascript -e "tell application \"UTM\" to start virtual machine named \"${name}\""
+start_vm "$name"
 
 # Emit a line the orchestrator parses: <name> <ssh_port> <lab_ip>
 echo "${name} ${ssh_port} ${lab_ip}"
