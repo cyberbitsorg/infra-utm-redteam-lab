@@ -16,6 +16,9 @@
   roles:
     - role: attacker
       tags: [attacker]
+    - role: desktop
+      when: attacker_gui | default('none') != 'none'
+      tags: [gui, desktop]
 
 - name: Configure vulnerable web target
   hosts: role_vuln_web

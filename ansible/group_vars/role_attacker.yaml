@@ -23,3 +23,8 @@ attacker_packages: >-
   {{ attacker_packages_curated if attacker_toolset == 'curated'
      else attacker_packages_headless if attacker_toolset == 'headless'
      else attacker_packages_large }}
+
+# Optional XFCE desktop, rendered in UTM's own window. Set ATTACKER_GUI=xfce in
+# lab.conf to enable; 'none' (default) installs no desktop. scripts/up.sh passes
+# the lab.conf value in as -e attacker_gui, which overrides this default.
+attacker_gui: none
