@@ -96,8 +96,9 @@ The toolset and targets are starting points. `docs/extending.md` shows how to ad
 
 Change the roster in `lab.conf`, then adjust Ansible:
 
-- pick the attacker toolset with `ATTACKER_TOOLSET` in `lab.conf`, or edit the package sets in `ansible/group_vars/attacker.yaml`
-- change the web target in `ansible/group_vars/vuln-web.yaml`, or the weak services in `ansible/group_vars/vuln-net.yaml`
+- pick the attacker toolset with `ATTACKER_TOOLSET` in `lab.conf`, or edit the package sets in `ansible/group_vars/role_attacker.yaml`
+- give the attacker a desktop with `ATTACKER_GUI=xfce` in `lab.conf` — installs XFCE + LightDM autologin, rendered in UTM's own window (off by default). Turning it back to `none` does not uninstall it; `make destroy` + `make up` for a clean headless box
+- change the web target in `ansible/group_vars/role_vuln_web.yaml`, or the weak services in `ansible/group_vars/role_vuln_net.yaml`
 - add a new role under `ansible/roles/` and a play in `ansible/playbook.yaml`
 
 Re-run `make up` to apply. Ansible is idempotent, so existing VMs are only updated, never rebuilt.
