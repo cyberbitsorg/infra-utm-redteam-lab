@@ -62,3 +62,24 @@
   when:
     - ansible_distribution == 'Kali'
     - "'cloud' in ansible_kernel"
+
+- name: Set the lab user's console/GUI password
+  # Set on the guest so we do not depend on the control node's crypt/passlib,
+  # matching the vuln-net role. chpasswd also unlocks the account that cloud-init
+  # locked (lock_passwd: true), so the login prompt below is actually usable.
+  # This is the console/GUI password only; SSH stays key-only (ssh_pwauth: false).
+  ansible.builtin.shell:
+    cmd: "echo '{{ ansible_user }}:{{ attacker_password }}' | chpasswd"
+  changed_when: false
+
+- name: Remove the Kali image's console auto-login overrides
+  # The genericcloud image ships agetty drop-ins that auto-login root on tty1 and
+  # the serial console. Remove them so the console presents a login prompt. They
+  # are not owned by any dpkg package, so removal is permanent (apt won't undo it).
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/getty@tty1.service.d/autologin.conf
+    - /etc/systemd/system/serial-getty@.service.d/autologin.conf
+  notify: Reload systemd and restart the tty1 getty

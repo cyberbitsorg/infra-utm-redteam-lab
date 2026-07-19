@@ -97,7 +97,8 @@ The toolset and targets are starting points. `docs/extending.md` shows how to ad
 Change the roster in `lab.conf`, then adjust Ansible:
 
 - pick the attacker toolset with `ATTACKER_TOOLSET` in `lab.conf`, or edit the package sets in `ansible/group_vars/role_attacker.yaml`
-- give the attacker a desktop with `ATTACKER_GUI=xfce` in `lab.conf` — installs XFCE + LightDM autologin, rendered in UTM's own window (off by default). Turning it back to `none` does not uninstall it; `make destroy` + `make up` for a clean headless box
+- set the attacker's console/GUI password with `ATTACKER_PASSWORD` in `lab.conf` (defaults to `redteam`). The attacker role removes the Kali image's auto-login and leaves a login prompt on both the console and the GUI greeter; SSH stays key-only
+- give the attacker a desktop with `ATTACKER_GUI=xfce` in `lab.conf` — installs XFCE + LightDM, prompting for `ATTACKER_PASSWORD` at the greeter, rendered in UTM's own window (off by default). Turning it back to `none` does not uninstall it; `make destroy` + `make up` for a clean headless box
 - change the web target in `ansible/group_vars/role_vuln_web.yaml`, or the weak services in `ansible/group_vars/role_vuln_net.yaml`
 - add a new role under `ansible/roles/` and a play in `ansible/playbook.yaml`
 
@@ -122,6 +123,7 @@ Other generated, gitignored files: `lab.conf` (your config, copied from `lab.con
 
 ```bash
 make help        # list all targets
+make preflight   # checks tools and generates lab SSH key
 make up          # full hands-off build
 make provision   # create and boot VMs only, no Ansible
 make configure   # run Ansible against running VMs

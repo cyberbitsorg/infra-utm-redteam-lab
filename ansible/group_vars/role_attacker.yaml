@@ -28,3 +28,9 @@ attacker_packages: >-
 # lab.conf to enable; 'none' (default) installs no desktop. scripts/up.sh passes
 # the lab.conf value in as -e attacker_gui, which overrides this default.
 attacker_gui: none
+
+# Console/GUI password for the lab user on the attacker box. Set ATTACKER_PASSWORD
+# in lab.conf; scripts/up.sh passes it in as -e attacker_password, which overrides
+# this default. The attacker role sets it and removes the image's console/GUI
+# auto-login so a login prompt is shown. SSH stays key-only regardless.
+attacker_password: redteam

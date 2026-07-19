@@ -1,0 +1,9 @@
+---
+- name: Reload systemd and restart the tty1 getty
+  # daemon_reload picks up the removed auto-login drop-ins; restarting getty@tty1
+  # makes the login prompt appear on the running UTM console without a reboot.
+  # The serial console picks up its removal on the next boot.
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: getty@tty1.service
+    state: restarted

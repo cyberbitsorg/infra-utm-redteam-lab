@@ -51,11 +51,20 @@ KALI_IMG_FILE="kali-genericcloud-arm64.raw"
 #   large    : 'kali-linux-large' (an even broader set)
 ATTACKER_TOOLSET="curated"
 
+# --- Attacker login ---------------------------------------------------------
+# Password for the lab user on the attacker (Kali) box. The base image
+# auto-logs-in on the console and the optional GUI; the attacker role instead
+# sets this password, removes the auto-login, and leaves a login prompt on both.
+# Left unset it defaults to 'redteam'. lab.conf is gitignored, so a real value
+# never lands in git. This is the console/GUI password only; SSH stays key-only.
+ATTACKER_PASSWORD="redteam"
+
 # --- Attacker desktop (optional GUI) ----------------------------------------
 # The attacker is headless by default (the base images ship no desktop). Set
 # this to 'xfce' to install a lightweight XFCE desktop that renders in UTM's own
 # window (via the virtio-gpu console the attacker role already configures) and
-# auto-logs-in the lab user. 'none' (default) installs nothing.
+# prompts for the ATTACKER_PASSWORD above at the LightDM greeter. 'none'
+# (default) installs nothing.
 #
 # A desktop wants more memory: give the attacker ram=3072 or more (the default
 # roster below already uses 4096) plus a little extra disk. Turning this back to

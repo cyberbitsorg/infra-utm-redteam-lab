@@ -24,37 +24,29 @@
     update_cache: true
     cache_valid_time: 3600
 
-- name: Ensure the passwordless-login groups exist
-  ansible.builtin.group:
-    name: "{{ item }}"
-    state: present
-  loop:
-    - nopasswdlogin
-    - autologin
+- name: Remove any LightDM auto-login drop-in
+  # The lab prompts for the ATTACKER_PASSWORD at the greeter instead of auto-
+  # logging in. Earlier builds shipped this drop-in; delete it so LightDM shows
+  # its greeter. Idempotent: a no-op once the file is gone.
+  ansible.builtin.file:
+    path: /etc/lightdm/lightdm.conf.d/10-lab-autologin.conf
+    state: absent
 
-- name: Allow the lab user to log in without a password
-  # Which group LightDM's autologin PAM stack requires is distro/version
-  # dependent, so the lab user joins both. Harmless where a group is unused.
-  ansible.builtin.user:
-    name: "{{ ansible_user }}"
-    groups:
-      - nopasswdlogin
-      - autologin
-    append: true
-
-- name: Configure LightDM to auto-login the lab user into XFCE
-  # Drop-in, never edit the packaged lightdm.conf. Inline content is idempotent:
-  # unchanged content reports 'ok'.
-  ansible.builtin.copy:
-    dest: /etc/lightdm/lightdm.conf.d/10-lab-autologin.conf
-    owner: root
-    group: root
-    mode: "0644"
-    content: |
-      [Seat:*]
-      autologin-user={{ ansible_user }}
-      autologin-user-timeout=0
-      autologin-session=xfce
+- name: Remove the lab user from the passwordless-login groups
+  # Membership in nopasswdlogin lets the greeter admit the user without a
+  # password, which would defeat the login prompt. gpasswd -d only where the
+  # group exists and the user is a member, so this stays idempotent.
+  ansible.builtin.shell:
+    cmd: |
+      set -euo pipefail
+      for g in nopasswdlogin autologin; do
+        if getent group "$g" >/dev/null && id -nG "{{ ansible_user }}" | tr ' ' '\n' | grep -qx "$g"; then
+          gpasswd -d "{{ ansible_user }}" "$g"
+        fi
+      done
+    executable: /bin/bash
+  register: desktop_group_removal
+  changed_when: "'Removing user' in desktop_group_removal.stdout"
 
 - name: Read the current default systemd target
   ansible.builtin.command: systemctl get-default

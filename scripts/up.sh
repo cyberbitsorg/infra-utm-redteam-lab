@@ -22,7 +22,8 @@ run_ansible() {
   log "Running Ansible playbook"
   ( cd "$REPO_ROOT" && ansible-playbook "${ANSIBLE_DIR}/playbook.yaml" \
       -e "attacker_toolset=${ATTACKER_TOOLSET:-curated}" \
-      -e "attacker_gui=${ATTACKER_GUI:-none}" )
+      -e "attacker_gui=${ATTACKER_GUI:-none}" \
+      -e "attacker_password=${ATTACKER_PASSWORD:-redteam}" )
   ok "Configuration complete"
 }
 
