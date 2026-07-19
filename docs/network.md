@@ -11,6 +11,11 @@ NAT interface: UTM "emulated" mode (QEMU user/SLIRP)
 - Must be "emulated": that maps to QEMU `user` networking, the only backend that
   honours the `hostfwd` port forward. UTM "shared" (vmnet-shared) gives internet
   but silently drops port forwards, so SSH-over-forward would never come up
+- SLIRP proxies the guest's outbound traffic through the host's own network
+  stack, so this NIC reaches **anything the host can route to** -- not just the
+  internet but your real LAN (router, NAS, other machines on 192.168.x.x). The
+  VMs are therefore NOT air-gapped from your home network. Only the lab segment
+  below is isolated; see "Hardening to fully offline" to remove this NIC.
 
 Lab interface: UTM "host" mode (Apple vmnet-host)
 
@@ -21,8 +26,9 @@ Lab interface: UTM "host" mode (Apple vmnet-host)
 - All lab VMs in "host" mode share ONE Apple vmnet L2 switch, so they reach each
   other on `10.10.10.0/24` out of the box. (Two "emulated" NICs would NOT bridge:
   each is its own private SLIRP net, so guest-to-guest traffic never flows.)
-- "host" mode is host-only with no gateway, so the segment has no route to the
-  internet or your home network, so it stays isolated
+- "host" mode is host-only with no gateway, so this segment has no route to the
+  internet or your home network -- it stays isolated. (This isolation is the lab
+  segment's alone; each VM still reaches out via its NAT NIC above.)
 
 ```
         macOS host (Apple Silicon)

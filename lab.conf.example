@@ -24,10 +24,12 @@ ATTACKER_PASSWORD="redteam"
 LAB_SSH_KEY="${HOME}/.ssh/id_ed25519_redteam.pub"
 
 # --- Networking -------------------------------------------------------------
-# UTM network mode: "shared" (NAT, VMs get internet + can reach each other),
-# or "host" (host-only, isolated, no internet). Provisioning needs packages,
-# so default to shared. See docs/network.md to harden to host-only afterwards.
-LAB_NETWORK_MODE="shared"
+# The two-NIC layout is fixed by scripts/create-vm.applescript and not
+# configurable here: every VM gets a NAT NIC (internet + the host SSH forward)
+# plus a host-only NIC on the isolated 10.10.10.0/24 lab segment. "Isolated"
+# means that segment only -- the NAT NIC also reaches your real LAN, not just
+# the internet. See docs/network.md, including how to drop the NAT NIC for a
+# fully offline target.
 
 # --- Resource defaults ------------------------------------------------------
 # Defaults for every VM in LAB_VMS below. A VM overrides any of these with a
