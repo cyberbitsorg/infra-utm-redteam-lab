@@ -64,5 +64,5 @@ fi
 run_ansible
 
 echo
-ok "Lab is up. Try: make ssh VM=attacker"
+ok "Lab is up. Try: make ssh attacker"
 log "Lab network (isolated): attacker 10.10.10.11, targets on 10.10.10.0/24"

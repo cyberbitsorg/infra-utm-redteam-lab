@@ -33,8 +33,8 @@ require_lab_conf_vars() {
   : "${LAB_PREFIX:?LAB_PREFIX missing in lab.conf}"
   : "${LAB_USER:?LAB_USER missing in lab.conf}"
   : "${LAB_SSH_KEY:?LAB_SSH_KEY missing in lab.conf}"
-  # parse_vm_entry falls back to these for any roster entry that omits
-  # cpu=/ram=/disk=, so every script that touches the roster needs them, not
+  # parse_vm_entry falls back to these for any fleet entry that omits
+  # cpu=/ram=/disk=, so every script that touches the fleet needs them, not
   # just create-vm.sh.
   : "${LAB_CPU:?LAB_CPU missing in lab.conf}"
   : "${LAB_RAM:?LAB_RAM missing in lab.conf}"
@@ -74,7 +74,7 @@ role_image() {
 # lab-wide LAB_CPU / LAB_RAM / LAB_DISK_GB. Omitting ":role" makes the role the
 # same as the name.
 #
-# This is the ONLY place that knows the roster syntax. Bash 3.2 has no
+# This is the ONLY place that knows the fleet syntax. Bash 3.2 has no
 # associative arrays, so the result comes back as globals.
 parse_vm_entry() {
   local entry="${1:?entry required}"

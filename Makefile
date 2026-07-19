@@ -6,6 +6,19 @@ SHELL := /bin/bash
 
 .PHONY: help preflight up provision configure status ssh down destroy lint test
 
+# Allow `make ssh attacker` (bare VM name) alongside `make ssh VM=attacker`.
+# When ssh is the goal, the remaining goals are the VM name: capture them and
+# stub each out as a no-op target so make does not fail with "no rule to make
+# target". Guarded on ssh being the first goal so typos on other targets still
+# error normally. (A VM must therefore not share a name with a make target.)
+ifeq ($(firstword $(MAKECMDGOALS)),ssh)
+SSH_ARGS := $(filter-out ssh,$(MAKECMDGOALS))
+ifneq ($(SSH_ARGS),)
+.PHONY: $(SSH_ARGS)
+$(eval $(SSH_ARGS):;@:)
+endif
+endif
+
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 		| awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -25,8 +38,8 @@ configure: ## Run Ansible against already-running VMs
 status: ## Show status of all lab VMs
 	@scripts/status.sh
 
-ssh: ## SSH into a VM: make ssh VM=attacker
-	@scripts/ssh.sh $(VM)
+ssh: ## SSH into a VM: make ssh attacker
+	@scripts/ssh.sh $(or $(VM),$(SSH_ARGS))
 
 down: ## Stop all lab VMs (keeps them for later)
 	@scripts/down.sh

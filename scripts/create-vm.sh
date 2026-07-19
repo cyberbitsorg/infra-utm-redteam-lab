@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Create, seed and start one lab VM, or bring an existing one in line with the
-# roster.
+# fleet.
 # Usage: create-vm.sh <index> <short-name> <role> <cpu> <ram-mib> <disk-gb>
 # Index (>=1) drives deterministic MAC addresses, lab IP and host SSH port.
 # Resources come from the caller (scripts/up.sh parses them out of LAB_VMS), so
@@ -21,8 +21,8 @@ mac_lab="$(printf '52:54:00:10:10:%02X' "$idx")"
 lab_ip="10.10.10.$((10 + idx))"
 ssh_port="$((2200 + idx))"
 
-# Bring an existing VM in line with the roster: cpu/ram through UTM. A
-# roster disk= change cannot be applied to a VM that already exists (see the
+# Bring an existing VM in line with the fleet: cpu/ram through UTM. A
+# fleet disk= change cannot be applied to a VM that already exists (see the
 # comment below), so it is only ever compared and reported, never acted on.
 # Only stops and starts the VM when cpu/ram really differ, so a repeat
 # 'make up' on an unchanged lab restarts nothing.
@@ -73,7 +73,7 @@ reconcile_existing_vm() {
   fi
 
   # No hardware change: nothing to reconfigure, but 'make up' must still bring a
-  # stopped VM up (after a reboot or 'make down' the roster is unchanged yet the
+  # stopped VM up (after a reboot or 'make down' the fleet is unchanged yet the
   # VM is not running). Without this, up.sh would wait on SSH for a VM nothing
   # ever started and time out. Starting an already-running VM is a no-op.
   if [[ "$change_hw" -eq 0 ]]; then

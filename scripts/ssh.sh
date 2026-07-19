@@ -3,7 +3,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 load_config
 
-short="${1:?Usage: make ssh VM=<short-name> (e.g. attacker)}"
+short="${1:?Usage: make ssh <short-name> (e.g. attacker)}"
 
 # Find the VM index to compute its host SSH port.
 idx=0; found=0; known=""

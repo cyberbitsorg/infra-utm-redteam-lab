@@ -15,7 +15,7 @@ The layout after `make up`:
 ## Get onto the attacker
 
 ```bash
-make ssh VM=attacker          # from the repo on your Mac
+make ssh attacker             # from the repo on your Mac
 ```
 
 The targets are already in `/etc/hosts` (`redteam-vuln-web`, `redteam-vuln-net`),

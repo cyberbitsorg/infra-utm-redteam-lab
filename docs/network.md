@@ -43,7 +43,7 @@ Lab interface: UTM "host" mode (Apple vmnet-host)
 After `make up`, the attacker should reach the targets on the lab net:
 
 ```bash
-make ssh VM=attacker
+make ssh attacker
 ping 10.10.10.12   # vuln-web (Juice Shop)
 ping 10.10.10.13   # vuln-net (services)
 ```

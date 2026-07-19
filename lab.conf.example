@@ -23,7 +23,7 @@ LAB_NETWORK_MODE="shared"
 
 # --- Resource defaults ------------------------------------------------------
 # Defaults for every VM in LAB_VMS below. A VM overrides any of these with a
-# cpu= / ram= / disk= field in its roster entry.
+# cpu= / ram= / disk= field in its fleet entry.
 LAB_CPU=2
 LAB_RAM=2048
 LAB_DISK_GB=20
@@ -67,17 +67,17 @@ ATTACKER_PASSWORD="redteam"
 # (default) installs nothing.
 #
 # A desktop wants more memory: give the attacker ram=3072 or more (the default
-# roster below already uses 4096) plus a little extra disk. Turning this back to
+# fleet below already uses 4096) plus a little extra disk. Turning this back to
 # 'none' does NOT uninstall an already-installed desktop (changes are
 # non-destructive, like disk=); run 'make destroy' then 'make up' for a clean
 # headless box again.
 ATTACKER_GUI="none"
 
-# --- VM roster --------------------------------------------------------------
+# --- VM fleet ---------------------------------------------------------------
 # Each entry: "name:role [cpu=N] [ram=MiB] [disk=GB]"
 #
 #   name   short name: the UTM VM is LAB_PREFIX-name, and this is what
-#          'make ssh VM=' and the Ansible inventory use
+#          'make ssh' and the Ansible inventory use
 #   role   maps to a base image (attacker=Kali, anything else=Ubuntu), a
 #          cloud-init seed and an Ansible group
 #   cpu    CPU cores       (default: LAB_CPU)

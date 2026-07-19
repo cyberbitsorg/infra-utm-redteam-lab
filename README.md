@@ -42,7 +42,7 @@ cp lab.conf.example lab.conf
 
 The defaults build a Kali `attacker`, a `vuln-web` target (Juice Shop) and a `vuln-net` target (weak services). Edit `lab.conf` for different names, an extra VM, or the attacker toolset (`ATTACKER_TOOLSET`: `curated` / `headless` / `large`).
 
-Each roster entry is `"name:role [cpu=N] [ram=MiB] [disk=GB]"`. The resource fields are optional and fall back to `LAB_CPU`, `LAB_RAM` and `LAB_DISK_GB`, so you only spell out the machines that need more:
+Each fleet entry is `"name:role [cpu=N] [ram=MiB] [disk=GB]"`. The resource fields are optional and fall back to `LAB_CPU`, `LAB_RAM` and `LAB_DISK_GB`, so you only spell out the machines that need more:
 
 ```bash
 LAB_VMS=(
@@ -63,7 +63,7 @@ This runs preflight, downloads and verifies the ARM64 cloud images (Ubuntu for t
 ### 3. Use it
 
 ```bash
-make ssh VM=attacker
+make ssh attacker
 ```
 
 From the attacker box, both targets are reachable on the lab network:
@@ -94,7 +94,7 @@ The toolset and targets are starting points. `docs/extending.md` shows how to ad
 
 ## Making changes
 
-Change the roster in `lab.conf`, then adjust Ansible:
+Change the fleet in `lab.conf`, then adjust Ansible:
 
 - pick the attacker toolset with `ATTACKER_TOOLSET` in `lab.conf`, or edit the package sets in `ansible/group_vars/role_attacker.yaml`
 - set the attacker's console/GUI password with `ATTACKER_PASSWORD` in `lab.conf` (defaults to `redteam`). The attacker role removes the Kali image's auto-login and leaves a login prompt on both the console and the GUI greeter; SSH stays key-only
@@ -104,7 +104,7 @@ Change the roster in `lab.conf`, then adjust Ansible:
 
 Re-run `make up` to apply. Ansible is idempotent, so existing VMs are only updated, never rebuilt.
 
-Resource changes work only for `cpu` and `ram`: raise either on a roster entry and the next `make up` stops that VM, applies the change and starts it again. VMs you did not change are left running. `disk=` is applied only when a VM is first created; raising it later has no effect on a VM that already exists, since UTM has already imported the disk into its own bundle by then. To grow the disk of an existing VM, run `make destroy` then `make up`. Disks are never shrunk either way, so lowering `disk=` on an existing VM just warns and leaves it as is.
+Resource changes work only for `cpu` and `ram`: raise either on a fleet entry and the next `make up` stops that VM, applies the change and starts it again. VMs you did not change are left running. `disk=` is applied only when a VM is first created; raising it later has no effect on a VM that already exists, since UTM has already imported the disk into its own bundle by then. To grow the disk of an existing VM, run `make destroy` then `make up`. Disks are never shrunk either way, so lowering `disk=` on an existing VM just warns and leaves it as is.
 
 ## Directory layout
 
