@@ -9,8 +9,12 @@ The lab is designed to grow. Two common directions:
    any of `cpu=`, `ram=` (MiB) or `disk=` (GB):
    `"vuln-ssh:vuln-ssh cpu=4 ram=4096 disk=40"`
 2. Create an Ansible role at `ansible/roles/vuln-ssh/tasks/main.yaml`
-3. Add a play for it in `ansible/playbook.yaml` targeting the `vuln-ssh` group
-4. Optionally add `ansible/group_vars/vuln-ssh.yaml` for its variables
+3. Add a play for it in `ansible/playbook.yaml`. `gen-inventory.sh` names each
+   group `role_<role>`, mapping hyphens to underscores, so target
+   `hosts: role_vuln_ssh` (not `vuln-ssh`) — the same way the existing plays use
+   `role_vuln_web` and `role_vuln_net`
+4. Optionally add `ansible/group_vars/role_vuln_ssh.yaml` for its variables. The
+   filename must match that group name, like the other `role_*.yaml` files
 5. Run `make up` again. The new VM is created and configured. Existing VMs are
    reconciled against the fleet: a changed `cpu=` or `ram=` stops that VM,
    applies it, and starts it again, but a changed `disk=` is not applied to a
