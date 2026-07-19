@@ -106,7 +106,8 @@ enum4linux -a 10.10.10.13             # full SMB enumeration
 
 ## Metasploit and a workflow
 
-Metasploit is installed. Start the console (a database is preconfigured on Kali):
+Metasploit is installed and the attacker role initialises its database, so the
+console comes up connected (`db_status` shows `Connected to msf.`):
 
 ```bash
 msfconsole -q

@@ -83,3 +83,28 @@
     - /etc/systemd/system/getty@tty1.service.d/autologin.conf
     - /etc/systemd/system/serial-getty@.service.d/autologin.conf
   notify: Reload systemd and restart the tty1 getty
+
+# Metasploit ships with the toolset, but its database is not set up on first
+# boot: a fresh msfconsole reports "postgresql selected, no connection" and
+# db_nmap fails. Kali's system-wide msfdb must run as root (this play already
+# does) and writes a config every user's msfconsole reads, so the lab user comes
+# up connected. Guarded on the binary so stripping metasploit from the toolset
+# does not break the play.
+- name: Check for the Metasploit database helper
+  ansible.builtin.stat:
+    path: /usr/bin/msfdb
+  register: attacker_msfdb
+
+- name: Initialise the Metasploit database
+  # creates: the exact config path msfdb writes, so this is a no-op once set up.
+  ansible.builtin.command: msfdb init
+  args:
+    creates: /usr/share/metasploit-framework/config/database.yml
+  when: attacker_msfdb.stat.exists
+
+- name: Keep PostgreSQL running across reboots (Metasploit backend)
+  ansible.builtin.service:
+    name: postgresql
+    enabled: true
+    state: started
+  when: attacker_msfdb.stat.exists
