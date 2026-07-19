@@ -66,10 +66,10 @@ fetch_kali() {
   if ! verify_file "$archive" "$sums" "$base"; then
     log "Downloading Kali checksums"
     curl -fSL --retry 3 -o "$sums" "$KALI_SHA_URL" \
-      || die "Could not fetch Kali SHA256SUMS. Kali keeps only the newest build under current/, so set KALI_VERSION in lab.conf to the current release (https://www.kali.org/releases/)."
+      || die "Could not fetch Kali SHA256SUMS for ${KALI_VERSION}. Check KALI_VERSION in lab.conf names a release still hosted at https://kali.download/cloud-images/ (very old releases move to https://old.kali.org/cloud-images/)."
     log "Downloading Kali image (large, this can take a while)"
     curl -fSL --retry 3 -o "$archive" "$KALI_IMG_URL" \
-      || die "Could not download Kali ${KALI_VERSION} (${KALI_IMG_URL}). That version is likely no longer current; update KALI_VERSION in lab.conf (https://www.kali.org/releases/)."
+      || die "Could not download Kali ${KALI_VERSION} (${KALI_IMG_URL}). Check KALI_VERSION in lab.conf names a release still hosted at https://kali.download/cloud-images/ (very old releases move to https://old.kali.org/cloud-images/)."
     verify_file "$archive" "$sums" "$base" || die "Checksum mismatch for ${base}. Delete images/ and retry."
   fi
   log "Extracting Kali image"
