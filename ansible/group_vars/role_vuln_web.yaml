@@ -3,7 +3,9 @@
 # OWASP Juice Shop publishes official multi-arch (arm64) images, so it runs
 # natively on Apple Silicon guests. Swap for another target by changing the
 # image + ports below (see docs for DVWA, which needs an arm64 image).
-vuln_image: bkimminich/juice-shop:latest
+# Pinned to a specific release rather than :latest so a rebuild is reproducible
+# and an upstream change can't silently alter the target. Bump deliberately.
+vuln_image: bkimminich/juice-shop:v19.2.1
 vuln_container_name: juice-shop
 vuln_host_port: 80
 vuln_container_port: 3000

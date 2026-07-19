@@ -20,10 +20,24 @@ run_ansible() {
   log "Installing Ansible Galaxy requirements"
   ansible-galaxy collection install -r "${ANSIBLE_DIR}/requirements.yaml" >/dev/null
   log "Running Ansible playbook"
+  # The console password goes through a 0600 file, not -e on the command line,
+  # so it never appears in the host process list (ps auxww). Single-quoted YAML
+  # scalar with '' escaping keeps any character in the password literal. The
+  # non-secret toolset/gui stay as plain -e. Bake the path into the trap so it
+  # is cleaned up even if ansible-playbook fails under set -e.
+  local vars_file pw esc
+  vars_file="$(mktemp)"
+  chmod 600 "$vars_file"
+  trap "rm -f '${vars_file}'" EXIT
+  pw="${ATTACKER_PASSWORD:-redteam}"
+  # Unquoted assignment so \' is a literal ' in the pattern/replacement: double
+  # each ' to '' the way a single-quoted YAML scalar escapes a quote.
+  esc=${pw//\'/\'\'}
+  printf "attacker_password: '%s'\n" "$esc" > "$vars_file"
   ( cd "$REPO_ROOT" && ansible-playbook "${ANSIBLE_DIR}/playbook.yaml" \
       -e "attacker_toolset=${ATTACKER_TOOLSET:-curated}" \
       -e "attacker_gui=${ATTACKER_GUI:-none}" \
-      -e "attacker_password=${ATTACKER_PASSWORD:-redteam}" )
+      -e "@${vars_file}" )
   ok "Configuration complete"
 }
 

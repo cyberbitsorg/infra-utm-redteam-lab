@@ -63,7 +63,7 @@ reconcile_existing_vm() {
       if [[ "$want_bytes" -gt "$cur_bytes" ]]; then
         warn "${name}: disk=${want_disk_gb}G is larger than the ${cur_gb}G it was created with. A disk cannot be grown on a VM that already exists in UTM; run 'make destroy' then 'make up' to rebuild it at the new size."
       elif [[ "$want_bytes" -lt "$cur_bytes" ]]; then
-        warn "${name}: disk=${want_disk_gb} is below the current ${cur_gb}G. Disks are never shrunk, leaving it as is."
+        warn "${name}: disk=${want_disk_gb}G is below the current ${cur_gb}G. Disks are never shrunk, leaving it as is."
       fi
     else
       warn "${name}: could not check its disk size (qemu-img could not read ${disk})"

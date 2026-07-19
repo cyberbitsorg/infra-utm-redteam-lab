@@ -49,7 +49,13 @@ UBUNTU_SHA_URL="https://cloud-images.ubuntu.com/releases/24.04/release/SHA256SUM
 # .tar.xz containing a raw disk (disk.raw); fetch-images.sh verifies the archive,
 # extracts it and renames it to KALI_IMG_FILE. The raw image is ~25 GiB (already
 # larger than LAB_DISK_GB, so create-vm.sh never shrinks it).
-KALI_IMG_URL="https://kali.download/cloud-images/current/kali-linux-2026.2-cloud-genericcloud-arm64.tar.xz"
+#
+# Kali's "current/" directory only ever holds the newest release, and the file
+# name carries that version. So KALI_VERSION must match whatever is current, or
+# both the image and its SHA256SUMS 404 the moment Kali cuts a new release. Bump
+# this each quarter to the latest at https://www.kali.org/releases/.
+KALI_VERSION="2026.2"
+KALI_IMG_URL="https://kali.download/cloud-images/current/kali-linux-${KALI_VERSION}-cloud-genericcloud-arm64.tar.xz"
 KALI_SHA_URL="https://kali.download/cloud-images/current/SHA256SUMS"
 KALI_IMG_FILE="kali-genericcloud-arm64.raw"
 
