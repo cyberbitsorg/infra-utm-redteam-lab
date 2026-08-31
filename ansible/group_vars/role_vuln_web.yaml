@@ -5,7 +5,7 @@
 # image + ports below (see docs for DVWA, which needs an arm64 image).
 # Pinned to a specific release rather than :latest so a rebuild is reproducible
 # and an upstream change can't silently alter the target. Bump deliberately.
-vuln_image: bkimminich/juice-shop:v19.2.1
+vuln_image: bkimminich/juice-shop:v20.2.0
 vuln_container_name: juice-shop
 vuln_host_port: 80
 vuln_container_port: 3000

@@ -42,8 +42,8 @@ LAB_DISK_GB=20
 # Targets run Ubuntu; the attacker runs Kali. The base image is chosen per role
 # (see scripts/lib.sh role_image). Checksums are verified against the SHA256SUMS
 # published alongside each image.
-UBUNTU_IMG_URL="https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-arm64.img"
-UBUNTU_SHA_URL="https://cloud-images.ubuntu.com/releases/24.04/release/SHA256SUMS"
+UBUNTU_IMG_URL="https://cloud-images.ubuntu.com/releases/26.04/release/ubuntu-26.04-server-cloudimg-arm64.img"
+UBUNTU_SHA_URL="https://cloud-images.ubuntu.com/releases/26.04/release/SHA256SUMS"
 
 # Kali attacker image (ARM64 genericcloud, cloud-init enabled). It ships as a
 # .tar.xz containing a raw disk (disk.raw); fetch-images.sh verifies the archive,
