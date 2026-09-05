@@ -1,0 +1,30 @@
+---
+- name: Install Docker for the vulnerable multi-app target
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - python3-docker
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure Docker is running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Run the WebGoat container (includes WebWolf on port 9090)
+  community.docker.docker_container:
+    name: "{{ webgoat_container_name }}"
+    image: "{{ webgoat_image }}"
+    restart_policy: unless-stopped
+    published_ports:
+      - "{{ webgoat_port }}:8080"
+      - "{{ webwolf_port }}:9090"
+
+- name: Report the target URL
+  ansible.builtin.debug:
+    msg: >-
+      WebGoat up: http://{{ lab_ip }}:{{ webgoat_port }}
+      (WebWolf: http://{{ lab_ip }}:{{ webwolf_port }})

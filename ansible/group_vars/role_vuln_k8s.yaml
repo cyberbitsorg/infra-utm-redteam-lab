@@ -1,0 +1,5 @@
+---
+# Kubernetes target: single-node k3s with deliberately weak defaults. The
+# version is pinned to a k3s release tag (get.k3s.io installs "stable"
+# otherwise); bump deliberately like the other image pins.
+k3s_version: v1.36.4+k3s1

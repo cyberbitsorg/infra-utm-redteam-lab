@@ -71,6 +71,87 @@
         force user = nobody
   notify: restart samba
 
+- name: Create the secondary account reachable with the leaked key
+  ansible.builtin.user:
+    name: "{{ backup_user }}"
+    shell: /bin/bash
+    create_home: true
+
+- name: Create the directory that "leaks" the backup key
+  ansible.builtin.file:
+    path: "{{ leaked_key_path | dirname }}"
+    state: directory
+    owner: "{{ weak_user }}"
+    group: "{{ weak_user }}"
+    mode: "0755"
+
+- name: Generate the leaked SSH keypair on the guest (idempotent)
+  # Generated on the guest so no private key material ever lands in the repo.
+  ansible.builtin.command:
+    argv:
+      - ssh-keygen
+      - -t
+      - ed25519
+      - -N
+      - ""
+      - -f
+      - "{{ leaked_key_path }}"
+      - -C
+      - lab-leaked-key
+    creates: "{{ leaked_key_path }}"
+
+- name: Make the leaked private key world-readable
+  ansible.builtin.file:
+    path: "{{ leaked_key_path }}"
+    mode: "0644"
+
+- name: Authorise the leaked key for the secondary account
+  # ansible.builtin.user does not create ~/.ssh, and copy refuses missing dirs.
+  ansible.builtin.file:
+    path: "/home/{{ backup_user }}/.ssh"
+    state: directory
+    owner: "{{ backup_user }}"
+    group: "{{ backup_user }}"
+    mode: "0700"
+
+- name: Install the leaked key as the secondary account's authorised key
+  ansible.builtin.copy:
+    src: "{{ leaked_key_path }}.pub"
+    remote_src: true
+    dest: "/home/{{ backup_user }}/.ssh/authorized_keys"
+    owner: "{{ backup_user }}"
+    group: "{{ backup_user }}"
+    mode: "0600"
+
+- name: Grant the weak user passwordless sudo on a GTFOBins binary
+  # Classic privesc misconfiguration: any shell escape in this binary is root.
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/lab-weak
+    content: "{{ weak_user }} ALL=(ALL) NOPASSWD: {{ privesc_tool }}\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "/usr/sbin/visudo -cf %s"
+
+- name: Create the leaked backup directory in the web root
+  ansible.builtin.file:
+    path: "{{ web_secret_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Plant a world-readable secret in the web root
+  ansible.builtin.copy:
+    dest: "{{ web_secret_path }}"
+    content: |
+      # legacy backup, TODO remove before production
+      db_user: {{ backup_user }}
+      db_password: {{ web_secret_password }}
+    owner: root
+    group: root
+    mode: "0644"
+
 - name: Ensure the weak services run at boot
   ansible.builtin.service:
     name: "{{ item }}"

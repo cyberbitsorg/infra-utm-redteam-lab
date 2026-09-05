@@ -5,3 +5,12 @@
 weak_user: victim
 weak_password: "Password1"
 samba_share_path: /srv/public
+
+# Post-exploitation breadcrumbs: leaked key grants lateral movement to the
+# backup account, sudo on a GTFOBins binary grants root, the web secret is a
+# plaintext-credential find. Lab-only, never replicate on a real host.
+backup_user: backup
+leaked_key_path: "/home/{{ weak_user }}/.backup/id_backup"
+privesc_tool: /usr/bin/find
+web_secret_path: /var/www/html/backup/config.txt
+web_secret_password: "Sup3rS3cretB@ckup"

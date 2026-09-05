@@ -1,0 +1,8 @@
+---
+# Dedicated Docker target hosting guided-instruction web apps. The image is
+# pinned to the current yearly release; webgoat/webgoat publishes official
+# multi-arch images (arm64 included), so no mirror is needed on Apple Silicon.
+webgoat_image: webgoat/webgoat:2026
+webgoat_container_name: webgoat
+webgoat_port: 8080
+webwolf_port: 9090

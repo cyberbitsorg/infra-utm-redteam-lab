@@ -33,3 +33,17 @@
   roles:
     - role: vuln-net
       tags: [vuln-net, apps]
+
+- name: Configure vulnerable multi-app Docker target
+  hosts: role_vuln_docker
+  become: true
+  roles:
+    - role: vuln-docker
+      tags: [vuln-docker, apps]
+
+- name: Configure vulnerable Kubernetes target
+  hosts: role_vuln_k8s
+  become: true
+  roles:
+    - role: vuln-k8s
+      tags: [vuln-k8s, apps]

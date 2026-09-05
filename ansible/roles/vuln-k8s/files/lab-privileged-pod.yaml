@@ -1,0 +1,27 @@
+---
+# The classic cluster misconfiguration: a privileged pod mounting the host
+# filesystem. Whoever can create pods (here: anyone holding the world-readable
+# kubeconfig) owns the node: `kubectl exec` in, chroot /host.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-tools
+  namespace: default
+  labels:
+    app: debug-tools
+spec:
+  hostPID: true
+  hostNetwork: true
+  containers:
+    - name: toolbox
+      image: alpine:3.20
+      command: ["sleep", "infinity"]
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: host-root
+          mountPath: /host
+  volumes:
+    - name: host-root
+      hostPath:
+        path: /

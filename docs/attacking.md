@@ -11,6 +11,8 @@ The layout after `make up`:
 | `attacker` | `10.10.10.11` | Kali, where you work |
 | `vuln-web` | `10.10.10.12` | OWASP Juice Shop (web) |
 | `vuln-net` | `10.10.10.13` | Weak SSH / FTP / Samba services |
+| `vuln-docker` | `10.10.10.14` | OWASP WebGoat + WebWolf (guided web lessons) |
+| `vuln-k8s` | `10.10.10.15` | k3s Kubernetes cluster with weak configuration |
 
 ## Get onto the attacker
 
@@ -18,7 +20,8 @@ The layout after `make up`:
 make ssh attacker             # from the repo on your Mac
 ```
 
-The targets are already in `/etc/hosts` (`redteam-vuln-web`, `redteam-vuln-net`),
+The targets are already in `/etc/hosts` (`redteam-vuln-web`, `redteam-vuln-net`,
+`redteam-vuln-docker`, `redteam-vuln-k8s`),
 SecLists is at `/usr/share/seclists`, and the toolset (`ATTACKER_TOOLSET`) is
 installed. A good habit before a session:
 
@@ -38,12 +41,14 @@ Sweep the segment, then fingerprint each host. Enumerate before you exploit.
 # what's alive on the lab net
 nmap -sn 10.10.10.0/24
 
-# full service/version scan of both targets
-nmap -sV -sC -p- 10.10.10.12 10.10.10.13
+# full service/version scan of all targets
+nmap -sV -sC -p- 10.10.10.12 10.10.10.13 10.10.10.14 10.10.10.15
 ```
 
-You should see `80/http` on `.12`, and `21/ftp 22/ssh 80/http 445/microsoft-ds`
-on `.13`. Match each open port to a follow-up ([nmap docs](https://nmap.org/book/man.html)).
+You should see `80/http` on `.12`, `21/ftp 22/ssh 80/http 445/microsoft-ds`
+on `.13`, `8080/http 9090/http` (Docker-proxy) on `.14`, and `6443/https`
+plus `10250/https` (kubelet) on `.15`. Match each open
+port to a follow-up ([nmap docs](https://nmap.org/book/man.html)).
 
 ## vuln-web: OWASP Juice Shop (10.10.10.12)
 
@@ -103,6 +108,64 @@ smbclient -L //10.10.10.13/ -N        # list shares
 smbclient //10.10.10.13/public -N     # connect as guest, then `ls`, `get`, `put`
 enum4linux -a 10.10.10.13             # full SMB enumeration
 ```
+
+### After the foothold: privesc breadcrumbs
+
+Once you're on the box as `victim`, three planted misconfigurations take you
+further. Finding them is the exercise — hints only:
+
+- Something in the web root was meant to be temporary
+  (`http://10.10.10.13/backup/config.txt`).
+- Users often leave copies of keys in their home directory.
+  Check file permissions, then try the key against every account you know.
+- `sudo -l` is the first command after any login. If it lists a binary, check
+  [GTFOBins](https://gtfobins.github.io/) for a shell escape.
+
+## vuln-docker: WebGoat (10.10.10.14)
+
+[WebGoat](https://owasp.org/www-project-webgoat/) is a deliberately insecure
+app with **guided lessons**: each lesson explains a vulnerability, lets you
+exploit it in the app itself, and shows the solution. It is the best target for
+structured learning; Juice Shop is the better target for free-form practice.
+
+Open in a browser (from the attacker GUI, or an SSH tunnel):
+
+```bash
+# from your Mac, if the attacker has no GUI:
+ssh -L 8080:10.10.10.14:8080 -p 2201 redteam@127.0.0.1
+```
+
+- WebGoat lessons: `http://10.10.10.14:8080/WebGoat`
+- WebWolf (companion app for some lessons): `http://10.10.10.14:9090/WebWolf`
+
+Register a new account on first visit; progress is stored in the container
+(`make configure` re-applies config without resetting it, `make destroy` wipes
+it).
+
+## vuln-k8s: Kubernetes (10.10.10.15)
+
+A single-node [k3s](https://k3s.io) cluster whose weaknesses are cluster-level,
+not app-level. Recon first:
+
+```bash
+nmap -sV -p 6443,10250 10.10.10.15
+# if kube-hunter is in your toolset:
+kube-hunter --remote 10.10.10.15
+```
+
+The intended attack paths (spoilers, minimal):
+
+- The API server on `6443` needs credentials to do anything interesting. The
+  kubeconfig on the node is world-readable (`/etc/rancher/k3s/k3s.yaml`, mode
+  0644) — any foothold on the box, as any user, hands you cluster-admin.
+- With the kubeconfig on the attacker (e.g. over SSH), enumerate secrets in
+  every namespace: one holds a base64 "production database" credential worth
+  decoding. Then look at the `debug-tools` pod: privileged, `hostPID`, host
+  filesystem mounted at `/host` — `kubectl exec` into it and you are
+  effectively root on the node itself.
+
+A full takeover chain to practise: **scan → weak kubeconfig → cluster admin →
+secret theft → privileged pod → node escape**.
 
 ## Metasploit and a workflow
 

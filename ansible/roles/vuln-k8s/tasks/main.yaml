@@ -1,0 +1,54 @@
+---
+- name: Download the pinned k3s installer
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/k3s-io/k3s/{{ k3s_version }}/install.sh
+    dest: /tmp/k3s-install.sh
+    mode: "0755"
+
+- name: Install k3s single-node with a world-readable kubeconfig
+  # --write-kubeconfig-mode 0644 is the deliberate weakness: any local user
+  # gets full cluster-admin through /etc/rancher/k3s/k3s.yaml.
+  ansible.builtin.command:
+    argv:
+      - /tmp/k3s-install.sh
+      - --write-kubeconfig-mode
+      - "0644"
+    creates: /usr/local/bin/k3s
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+
+- name: Wait for the node to be ready
+  # Right after install the node object is not registered yet, and kubectl
+  # wait fails (rather than waits) when no resource matches, so retry.
+  ansible.builtin.command:
+    argv:
+      - k3s
+      - kubectl
+      - wait
+      - --for=condition=ready
+      - node
+      - --all
+      - --timeout=60s
+  register: k3s_node_wait
+  until: k3s_node_wait.rc == 0
+  retries: 10
+  delay: 10
+  changed_when: false
+
+- name: Plant the vulnerable lab manifests
+  # Files here are applied (and re-applied) by the embedded manifest
+  # controller, so this is idempotent and survives reboots.
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /var/lib/rancher/k3s/server/manifests/{{ item }}
+    owner: root
+    group: root
+    mode: "0600"
+  loop:
+    - lab-vulnerable-secret.yaml
+    - lab-privileged-pod.yaml
+
+- name: Report the target
+  ansible.builtin.debug:
+    msg: >-
+      k3s API: https://{{ lab_ip }}:6443 (kube-hunter / kubelet:10250 also exposed)
