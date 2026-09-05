@@ -94,10 +94,20 @@ ATTACKER_GUI="none"
 #   cpu    CPU cores       (default: LAB_CPU)
 #   ram    memory in MiB   (default: LAB_RAM)
 #   disk   disk size in GB (default: LAB_DISK_GB)
+#   state  REQUIRED, "on" or "off": pause a VM without losing its slot
 #
-# The resource fields are optional and their order does not matter; a VM that
-# names none of them uses the defaults above. Give the attacker room if you
-# raise ATTACKER_TOOLSET: kali-linux-large does not fit in 20 GB.
+# cpu/ram/disk are optional and their order does not matter; a VM that names
+# none of them uses the defaults above. state= must be present on EVERY entry,
+# so a VM's place in the lab is always an explicit choice. Give the attacker
+# room if you raise ATTACKER_TOOLSET: kali-linux-large does not fit in 20 GB.
+#
+# state=off skips a VM in 'make up' / 'make provision' (stopping it if it is
+# running) and leaves it out of Ansible, but KEEPS its index — its lab IP and
+# SSH port stay reserved, so toggling other VMs on/off later never shifts the
+# addresses of the rest. 'make status' marks it "(off)"; 'make down' and
+# 'make destroy' still cover it. Freeing its resources completely still means
+# removing the line (which shifts the addresses of every VM below it) or
+# 'make destroy'.
 #
 # Changing cpu= or ram= for a VM that already exists makes the next 'make up'
 # stop that VM, apply the change, and start it again. VMs whose cpu/ram did
@@ -111,7 +121,9 @@ ATTACKER_GUI="none"
 #
 # Add a line plus a matching Ansible role to grow the lab (see README).
 LAB_VMS=(
-  "attacker:attacker cpu=4 ram=4096 disk=60"
-  "vuln-web:vuln-web"
-  "vuln-net:vuln-net"
+  "attacker:attacker cpu=4 ram=4096 disk=60 state=on"
+  "vuln-web:vuln-web state=on"
+  "vuln-net:vuln-net state=on"
+  "vuln-docker:vuln-docker ram=4096 state=on"
+  "vuln-k8s:vuln-k8s ram=4096 state=on"
 )

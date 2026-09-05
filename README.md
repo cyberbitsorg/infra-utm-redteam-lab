@@ -26,7 +26,7 @@ The attacker and targets share an isolated `10.10.10.0/24` segment (a shared App
 - `qemu` for `qemu-img`: `brew install qemu`
 - An ISO builder for cloud-init seeds: `xorriso` (`brew install xorriso`) or the built-in macOS `hdiutil` (used automatically if `xorriso` is absent)
 - `ansible`: `brew install ansible`
-- Free disk space: roughly **~20 GB** for the default (`curated`) build. The Kali attacker (with two kernels + toolset) is the bulk at ~7 GB, the two targets ~2.5 GB each, plus the base images. Choosing `ATTACKER_TOOLSET=large` needs considerably more (plan for 40 GB+).
+- Free disk space: roughly **~20 GB** for the default (`curated`) build. The Kali attacker (with two kernels + toolset) is the bulk at ~7 GB, the targets a few GB each (WebGoat on `vuln-docker` is the largest image), plus the base images. Choosing `ATTACKER_TOOLSET=large` needs considerably more (plan for 40 GB+).
 
 `make preflight` checks the tools and generates an SSH key if you do not have one.
 
@@ -40,17 +40,24 @@ The attacker and targets share an isolated `10.10.10.0/24` segment (a shared App
 cp lab.conf.example lab.conf
 ```
 
-The defaults build a Kali `attacker`, a `vuln-web` target (Juice Shop) and a `vuln-net` target (weak services). Edit `lab.conf` for different names, an extra VM, or the attacker toolset (`ATTACKER_TOOLSET`: `curated` / `headless` / `large`).
+The defaults build a Kali `attacker`, a `vuln-web` target (Juice Shop), a `vuln-net` target (weak services plus privesc breadcrumbs), a `vuln-docker` target (WebGoat) and a `vuln-k8s` target (single-node k3s). Edit `lab.conf` for different names, an extra VM, or the attacker toolset (`ATTACKER_TOOLSET`: `curated` / `headless` / `large`).
 
-Each fleet entry is `"name:role [cpu=N] [ram=MiB] [disk=GB]"`. The resource fields are optional and fall back to `LAB_CPU`, `LAB_RAM` and `LAB_DISK_GB`, so you only spell out the machines that need more:
+Each fleet entry is `"name:role [cpu=N] [ram=MiB] [disk=GB] state=on|off"`. The `state=` field is required on every entry — the toggle is always explicit. The resource fields are optional and fall back to `LAB_CPU`, `LAB_RAM` and `LAB_DISK_GB`, so you only spell out the machines that need more:
 
 ```bash
 LAB_VMS=(
-  "attacker:attacker cpu=4 ram=4096 disk=60"
-  "vuln-web:vuln-web"
-  "vuln-net:vuln-net"
+  "attacker:attacker cpu=4 ram=4096 disk=60 state=on"
+  "vuln-web:vuln-web state=on"
+  "vuln-net:vuln-net state=on"
+  "vuln-docker:vuln-docker ram=4096 state=on"
+  "vuln-k8s:vuln-k8s ram=4096 state=on"
 )
 ```
+
+`state=off` pauses a VM without losing its slot: `make up` skips it (and stops
+it if it is running), Ansible ignores it, but its lab IP and SSH port stay
+reserved so the other VMs never shift address. `make status` shows it as
+`(off)`. Handy to free RAM/CPU while you work on one target.
 
 ### 2. Build the lab
 
@@ -66,12 +73,14 @@ This runs preflight, downloads and verifies the ARM64 cloud images (Ubuntu for t
 make ssh attacker
 ```
 
-From the attacker box, both targets are reachable on the lab network:
+From the attacker box, all targets are reachable on the lab network:
 
 ```bash
-nmap 10.10.10.12 10.10.10.13     # both targets
+nmap 10.10.10.12 10.10.10.13 10.10.10.14 10.10.10.15
 curl http://10.10.10.12          # vuln-web: OWASP Juice Shop
-# vuln-net (10.10.10.13): weak SSH/FTP/Samba services to enumerate and attack
+curl http://10.10.10.14:8080     # vuln-docker: WebGoat (WebWolf on :9090)
+# vuln-net (10.10.10.13): weak SSH/FTP/Samba, leaked keys and sudo privesc
+# vuln-k8s (10.10.10.15): k3s API on :6443, kubelet on :10250
 ```
 
 `docs/attacking.md` is a short operator's guide: where to start on each target,
@@ -80,15 +89,21 @@ with concrete commands for recon, Juice Shop, and the weak-services box.
 ### 4. Tear down
 
 ```bash
-make down       # stop the VMs, keep them
+make down       # stop the VMs (and close their console windows), keep them
 make destroy    # delete the VMs and generated artifacts
 ```
+
+`make down` and `state=off` also close the console windows of the stopped VMs,
+via UTM's own AppleScript interface (no macOS permissions needed). The window
+of a still-running VM is never touched.
 
 ## What you get
 
 - attacker: Kali Linux ARM64 with a selectable toolset (`ATTACKER_TOOLSET`: a `curated` subset by default with nmap, hydra, sqlmap, ffuf, gobuster, metasploit, SecLists, or the full `kali-linux-headless` / `kali-linux-large` metapackages), and `/etc/hosts` prefilled with the lab targets
 - vuln-web: OWASP Juice Shop, an intentionally vulnerable web app, served on the lab network
-- vuln-net: a services box with deliberately weak SSH, FTP (vsftpd), and Samba for enumeration and credential attacks
+- vuln-net: a services box with deliberately weak SSH, FTP (vsftpd), and Samba for enumeration and credential attacks, plus post-exploitation breadcrumbs: a leaked SSH key for lateral movement, sudo on a GTFOBins binary, and a plaintext secret in the web root
+- vuln-docker: a Docker host running OWASP WebGoat (guided lessons) with WebWolf on port 9090
+- vuln-k8s: single-node [k3s](https://k3s.io) Kubernetes with deliberately weak configuration — a world-readable kubeconfig, a plaintext secret in a namespace, and a privileged hostPath pod — for cluster attack practice (kube-hunter works well against it)
 
 The toolset and targets are starting points. `docs/extending.md` shows how to add VMs and how to grow into a Windows Active Directory (AD) phase.
 
@@ -127,10 +142,11 @@ make preflight   # checks tools and generates lab SSH key
 make up          # full hands-off build
 make provision   # create and boot VMs only, no Ansible
 make configure   # run Ansible against running VMs
-make status      # show VM status
+make status      # show VM status (state=off VMs marked "(off)")
 make ssh VM=...  # SSH into a VM by short name
+make test        # run the shell unit tests
 make lint        # syntax-check scripts and Ansible
-make down        # stop VMs
+make down        # stop VMs (and close their console windows)
 make destroy     # delete VMs and artifacts
 ```
 

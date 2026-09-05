@@ -41,7 +41,7 @@ status: ## Show status of all lab VMs
 ssh: ## SSH into a VM: make ssh attacker
 	@scripts/ssh.sh $(or $(VM),$(SSH_ARGS))
 
-down: ## Stop all lab VMs (keeps them for later)
+down: ## Stop all lab VMs, close their windows (keeps them for later)
 	@scripts/down.sh
 
 destroy: ## Stop and delete all lab VMs and generated artifacts

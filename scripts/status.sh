@@ -9,5 +9,6 @@ for entry in "${LAB_VMS[@]}"; do
   parse_vm_entry "$entry"
   name="$(vm_name "$VM_SHORT")"
   status="$("$UTMCTL" status "$name" 2>/dev/null || echo "not created")"
+  [[ "$VM_STATE" == "off" ]] && status="${status} (off)"
   printf '%-28s %-10s\n' "$name" "$status"
 done

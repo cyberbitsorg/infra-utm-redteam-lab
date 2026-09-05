@@ -21,8 +21,8 @@ Lab interface: UTM "host" mode (Apple vmnet-host)
 
 - Purpose: the isolated segment where the exercise happens
 - Static addresses on `10.10.10.0/24`, assigned by cloud-init and matched by MAC:
-  attacker `10.10.10.11`, vuln-web `10.10.10.12`, vuln-net `10.10.10.13`
-  (`10 + index`)
+  attacker `10.10.10.11`, vuln-web `.12`, vuln-net `.13`, vuln-docker `.14`,
+  vuln-k8s `.15` (`10 + index`)
 - All lab VMs in "host" mode share ONE Apple vmnet L2 switch, so they reach each
   other on `10.10.10.0/24` out of the box. (Two "emulated" NICs would NOT bridge:
   each is its own private SLIRP net, so guest-to-guest traffic never flows.)
@@ -32,15 +32,15 @@ Lab interface: UTM "host" mode (Apple vmnet-host)
 
 ```
         macOS host (Apple Silicon)
-        | ssh 127.0.0.1:2201   | ssh :2202          | ssh :2203
-        v                      v                    v
-   +-----------+          +-----------+        +-----------+
-   | attacker  |          | vuln-web  |        | vuln-net  |
-   | (Kali)    | internet | juice-shop|        | services  |
-   | nat: dhcp |<---       | nat: dhcp |        | nat: dhcp |
-   | lab: .11  |          | lab: .12  |        | lab: .13  |
-   +-----+-----+          +-----+-----+        +-----+-----+
-         |                      |                    |
+        | ssh 127.0.0.1:2201   | ssh :2202   | ssh :2203 .. :2205
+        v                      v             v
+   +-----------+          +-----------+   +-----------+
+   | attacker  |          | vuln-web  |   | vuln-*    |
+   | (Kali)    | internet | juice-shop|   | targets   |
+   | nat: dhcp |<---       | nat: dhcp |   | nat: dhcp |
+   | lab: .11  |          | lab: .12  |   | lab: .13+ |
+   +-----+-----+          +-----+-----+   +-----+-----+
+         |                      |               |
          +===== 10.10.10.0/24 (vmnet-host, isolated) =====+
 ```
 
@@ -50,11 +50,12 @@ After `make up`, the attacker should reach the targets on the lab net:
 
 ```bash
 make ssh attacker
-ping 10.10.10.12   # vuln-web (Juice Shop)
-ping 10.10.10.13   # vuln-net (services)
+ping 10.10.10.12            # vuln-web (Juice Shop)
+ping 10.10.10.{13..15}     # the other targets
 ```
 
-Both should answer. If they do not, confirm each VM's lab NIC is UTM "host" mode
+All should answer (VMs with `state=off` will not — that is expected). If they
+do not, confirm each VM's lab NIC is UTM "host" mode
 (the shared Apple vmnet switch) rather than "emulated" (per-VM isolated SLIRP).
 
 ## Hardening to fully offline

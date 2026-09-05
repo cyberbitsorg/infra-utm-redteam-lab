@@ -56,6 +56,18 @@ idx=0
 for entry in "${LAB_VMS[@]}"; do
   idx=$((idx + 1))
   parse_vm_entry "$entry"
+  if [[ "$VM_STATE" == "off" ]]; then
+    # Keep the index (IP/SSH port) reserved but leave the VM out of this run.
+    name="$(vm_name "$VM_SHORT")"
+    if [[ "$(vm_status "$name")" == "started" ]]; then
+      log "state=off: stopping ${name}"
+      stop_vm_and_wait "$name" 60 || warn "${name} did not stop in time"
+    else
+      log "state=off: skipping ${name}"
+    fi
+    close_vm_window "$name"
+    continue
+  fi
   result="$("${SCRIPTS}/create-vm.sh" "$idx" "$VM_SHORT" "$VM_ROLE" \
     "$VM_CPU" "$VM_RAM" "$VM_DISK" | tail -1)"
   read -r name port lab_ip <<<"$result"

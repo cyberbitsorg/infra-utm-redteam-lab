@@ -4,10 +4,16 @@ The lab is designed to grow. Two common directions:
 
 ## Add another Linux VM
 
-1. Add a line to `LAB_VMS` in `lab.conf`, for example `"vuln-ssh:vuln-ssh"`.
-   To give it more than the `LAB_CPU` / `LAB_RAM` / `LAB_DISK_GB` defaults, add
-   any of `cpu=`, `ram=` (MiB) or `disk=` (GB):
-   `"vuln-ssh:vuln-ssh cpu=4 ram=4096 disk=40"`
+1. Add a line to `LAB_VMS` in `lab.conf`, for example
+   `"vuln-ssh:vuln-ssh state=on"`. `state=` is required on every entry
+   (`on` or `off`); to give the VM more than the `LAB_CPU` / `LAB_RAM` /
+   `LAB_DISK_GB` defaults, add any of `cpu=`, `ram=` (MiB) or `disk=` (GB):
+   `"vuln-ssh:vuln-ssh cpu=4 ram=4096 disk=40 state=on"`. Append new VMs at
+   the end: the position of an entry fixes its SSH port and lab IP, so
+   inserting one in the middle shifts the addresses of every VM below it.
+   `state=off` pauses a VM (skipped by `make up`, stopped if running,
+   invisible to Ansible) while keeping its slot — see `lab.conf.example` for
+   the details.
 2. Create an Ansible role at `ansible/roles/vuln-ssh/tasks/main.yaml`
 3. Add a play for it in `ansible/playbook.yaml`. `gen-inventory.sh` names each
    group `role_<role>`, mapping hyphens to underscores, so target
@@ -21,7 +27,9 @@ The lab is designed to grow. Two common directions:
    VM that already exists (see "Making changes" in the README)
 
 The index of a VM is its position in `LAB_VMS`, which fixes its SSH port
-(`2200 + index`) and lab IP (`10.10.10.{10 + index}`).
+(`2200 + index`) and lab IP (`10.10.10.{10 + index}`). Existing examples to
+copy from: `vuln-docker` (a Docker host running containers) and `vuln-k8s`
+(single-node k3s with deliberately weak cluster configuration).
 
 ## Phase 2: add a Windows Active Directory target
 

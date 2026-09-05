@@ -67,12 +67,16 @@ role_image() {
   esac
 }
 
-# Parse one LAB_VMS entry into VM_SHORT / VM_ROLE / VM_CPU / VM_RAM / VM_DISK.
+# Parse one LAB_VMS entry into VM_SHORT / VM_ROLE / VM_CPU / VM_RAM / VM_DISK /
+# VM_STATE.
 #
-# Entry syntax: "name:role [cpu=N] [ram=MiB] [disk=GB]"
-# The resource fields are optional and order-free; each one falls back to the
-# lab-wide LAB_CPU / LAB_RAM / LAB_DISK_GB. Omitting ":role" makes the role the
-# same as the name.
+# Entry syntax: "name:role [cpu=N] [ram=MiB] [disk=GB] state=on|off"
+# state= is REQUIRED on every entry: the toggle is always explicit, never
+# implied. cpu/ram/disk are optional, order-free, and fall back to the lab-wide
+# LAB_CPU / LAB_RAM / LAB_DISK_GB. Omitting ":role" makes the role the same as
+# the name. state=off keeps the VM's index (and therefore its lab IP and SSH
+# port reserved) but excludes it from make up/provision and Ansible: 'make up'
+# stops it if it is running. make down/destroy/status still see it.
 #
 # This is the ONLY place that knows the fleet syntax. Bash 3.2 has no
 # associative arrays, so the result comes back as globals.
@@ -98,20 +102,29 @@ parse_vm_entry() {
   VM_CPU="$LAB_CPU"
   VM_RAM="$LAB_RAM"
   VM_DISK="$LAB_DISK_GB"
+  # No default: state must be set explicitly by the loop below, and a missing
+  # state= field is rejected after the loop.
+  VM_STATE=""
 
   # Deliberate word splitting: the fields are space separated.
   # shellcheck disable=SC2086
   for field in $fields; do
     [[ "$field" == *=* ]] \
-      || die "LAB_VMS entry '${entry}': '${field}' is not key=value. Valid keys: cpu, ram, disk."
+      || die "LAB_VMS entry '${entry}': '${field}' is not key=value. Valid keys: cpu, ram, disk, state."
     key="${field%%=*}"
     val="${field#*=}"
     # Check the key before the value, so 'mem=abc' complains about 'mem'
     # rather than about the number.
     case "$key" in
-      cpu|ram|disk) ;;
-      *) die "LAB_VMS entry '${entry}': unknown field '${key}'. Valid keys: cpu, ram, disk." ;;
+      cpu|ram|disk|state) ;;
+      *) die "LAB_VMS entry '${entry}': unknown field '${key}'. Valid keys: cpu, ram, disk, state." ;;
     esac
+    if [[ "$key" == "state" ]]; then
+      [[ "$val" == "on" || "$val" == "off" ]] \
+        || die "LAB_VMS entry '${entry}': state must be 'on' or 'off', got '${val}'."
+      VM_STATE="$val"
+      continue
+    fi
     [[ "$val" =~ ^[1-9][0-9]*$ ]] \
       || die "LAB_VMS entry '${entry}': ${key} must be a positive whole number, got '${val}'."
     case "$key" in
@@ -120,6 +133,9 @@ parse_vm_entry() {
       disk) VM_DISK="$val" ;;
     esac
   done
+
+  [[ -n "$VM_STATE" ]] \
+    || die "LAB_VMS entry '${entry}': missing required field 'state'. Set state=on or state=off."
 }
 
 # --- Platform guard ---------------------------------------------------------
@@ -202,4 +218,15 @@ start_vm() {
   local name="${1:?vm name required}"
   "$UTMCTL" start "$name" >/dev/null 2>&1 \
     || osascript -e "tell application \"UTM\" to start virtual machine named \"${name}\"" >/dev/null 2>&1
+}
+
+# Close the UTM console window of a stopped VM, native AppleScript (utmctl has
+# no close command). Do NOT drive the UI with System Events clicks here: a
+# stopped VM's window shows a big start-button overlay, and clicking "button 1"
+# can hit that and boot the VM right back up. Call it only AFTER the VM is
+# stopped; UTM silently ignores the close for a running VM's window (which is
+# fine — that window is in use). Best effort: no window open, nothing happens.
+close_vm_window() {
+  local name="${1:?vm name required}"
+  osascript -e "tell application \"UTM\" to close (every window whose name contains \"${name}\")" >/dev/null 2>&1 || true
 }

@@ -34,41 +34,48 @@ expect_reject() {
 
 echo "parse_vm_entry:"
 
-parse_vm_entry "vuln-net:vuln-net"
+parse_vm_entry "vuln-net:vuln-net state=on"
 check "bare entry keeps name"     "vuln-net" "$VM_SHORT"
 check "bare entry keeps role"     "vuln-net" "$VM_ROLE"
 check "bare entry inherits cpu"   "2"        "$VM_CPU"
 check "bare entry inherits ram"   "2048"     "$VM_RAM"
 check "bare entry inherits disk"  "20"       "$VM_DISK"
 
-parse_vm_entry "vuln-web:vuln-web ram=4096"
+parse_vm_entry "vuln-web:vuln-web ram=4096 state=on"
 check "one field overrides ram"        "4096" "$VM_RAM"
 check "one field leaves cpu default"   "2"    "$VM_CPU"
 check "one field leaves disk default"  "20"   "$VM_DISK"
 
-parse_vm_entry "attacker:attacker cpu=4 ram=8192 disk=60"
+parse_vm_entry "attacker:attacker cpu=4 ram=8192 disk=60 state=on"
 check "all fields: name" "attacker" "$VM_SHORT"
 check "all fields: role" "attacker" "$VM_ROLE"
 check "all fields: cpu"  "4"        "$VM_CPU"
 check "all fields: ram"  "8192"     "$VM_RAM"
 check "all fields: disk" "60"       "$VM_DISK"
 
-parse_vm_entry "box:role disk=60 cpu=4"
+parse_vm_entry "box:role disk=60 cpu=4 state=off"
 check "field order does not matter: cpu"  "4"  "$VM_CPU"
 check "field order does not matter: disk" "60" "$VM_DISK"
 check "unnamed field still defaults: ram" "2048" "$VM_RAM"
 
-parse_vm_entry "solo"
+parse_vm_entry "solo state=on"
 check "name without a role: name" "solo" "$VM_SHORT"
 check "name without a role: role" "solo" "$VM_ROLE"
 
-parse_vm_entry "web:vuln-web cpu=1"
+parse_vm_entry "web:vuln-web cpu=1 state=on"
 check "name and role may differ: name" "web"      "$VM_SHORT"
 check "name and role may differ: role" "vuln-web" "$VM_ROLE"
 
-parse_vm_entry "box:role:tag cpu=4"
+parse_vm_entry "box:role:tag cpu=4 state=on"
 check "head splits at the FIRST colon: name" "box"      "$VM_SHORT"
 check "head splits at the FIRST colon: role" "role:tag" "$VM_ROLE"
+
+parse_vm_entry "k8s:vuln-k8s ram=4096 state=off"
+check "state=off is parsed"          "off"   "$VM_STATE"
+check "state=off keeps other fields" "4096"  "$VM_RAM"
+
+parse_vm_entry "k8s:vuln-k8s state=on cpu=2"
+check "state=on is explicit" "on" "$VM_STATE"
 
 expect_reject "unknown key"          "box:role mem=4096"
 expect_reject "non-numeric value"    "box:role ram=8gb"
@@ -76,6 +83,9 @@ expect_reject "zero is not valid"    "box:role cpu=0"
 expect_reject "negative value"       "box:role cpu=-2"
 expect_reject "field without ="      "box:role bogus"
 expect_reject "empty name"          ":role cpu=2"
+expect_reject "bad state value"     "box:role state=disabled"
+expect_reject "missing state"       "box:role cpu=2"
+expect_reject "missing state (bare)" "box:role"
 
 echo
 echo "require_lab_conf_vars:"

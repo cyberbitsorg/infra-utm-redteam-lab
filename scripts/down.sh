@@ -10,5 +10,12 @@ for entry in "${LAB_VMS[@]}"; do
   "$UTMCTL" stop "$name" 2>/dev/null \
     || osascript -e "tell application \"UTM\" to stop virtual machine named \"${name}\"" 2>/dev/null \
     || warn "Could not stop ${name} (not running?)"
+  # utmctl stop returns before the guest is fully down; only close the window
+  # once "stopped", or UTM pops its "keep running?" dialog instead.
+  if stop_vm_and_wait "$name" 60; then
+    close_vm_window "$name"
+  else
+    warn "${name} did not stop in time, leaving its window open"
+  fi
 done
 ok "All lab VMs stopped"
