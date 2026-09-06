@@ -225,7 +225,7 @@ start_vm() {
 # stopped VM's window shows a big start-button overlay, and clicking "button 1"
 # can hit that and boot the VM right back up. Call it only AFTER the VM is
 # stopped; UTM silently ignores the close for a running VM's window (which is
-# fine — that window is in use). Best effort: no window open, nothing happens.
+# fine: that window is in use). Best effort: no window open, nothing happens.
 close_vm_window() {
   local name="${1:?vm name required}"
   osascript -e "tell application \"UTM\" to close (every window whose name contains \"${name}\")" >/dev/null 2>&1 || true

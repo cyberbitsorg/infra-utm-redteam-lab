@@ -28,7 +28,7 @@ rows="$(cat)"
   done <<<"$rows"
 
   echo "  children:"
-  # One group per role, ALWAYS — including roles whose only VMs are state=off
+  # One group per role, ALWAYS, including roles whose only VMs are state=off
   # and therefore absent from the rows. Emitting an empty group keeps the
   # playbook's host patterns matching (an empty play skips silently) instead
   # of warning "Could not match supplied host pattern".
