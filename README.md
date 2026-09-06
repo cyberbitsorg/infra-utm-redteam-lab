@@ -72,12 +72,12 @@ nmap 10.10.10.12 10.10.10.13 10.10.10.14 10.10.10.15 10.10.10.16
 curl http://10.10.10.12          # vuln-web: OWASP Juice Shop
 curl http://10.10.10.14:8080     # vuln-docker: WebGoat (WebWolf on :9090)
 curl http://10.10.10.14:8888     # vuln-docker: crAPI (MailHog on :8025)
-# vuln-net (10.10.10.13): weak SSH/FTP/Samba, leaked keys and sudo privesc
+# vuln-net (10.10.10.13): weak SSH/FTP/Samba plus privesc breadcrumbs
 # vuln-k8s (10.10.10.15): k3s API on :6443, kubelet on :10250
 # vuln-iot (10.10.10.16): anonymous MQTT broker on :1883
 ```
 
-`docs/attacking.md` is the operator's guide per target.
+`docs/attacking.md` is the operator's guide per target (spoiler-free; `docs/walkthrough.md` has the solutions).
 
 ### 3. Tear down
 
@@ -92,10 +92,12 @@ Window closing uses UTM's own AppleScript interface; no macOS permissions needed
 
 - attacker: Kali ARM64, selectable toolset (`ATTACKER_TOOLSET`: `curated` subset with nmap, hydra, sqlmap, ffuf, gobuster, metasploit, SecLists; or `kali-linux-headless` / `kali-linux-large`), `/etc/hosts` prefilled with the lab targets
 - vuln-web: OWASP Juice Shop
-- vuln-net: weak SSH, FTP and Samba for enumeration and credential attacks, plus privesc breadcrumbs: a leaked SSH key, sudo on a GTFOBins binary, and a plaintext secret in the web root
+- vuln-net: weak SSH, FTP and Samba for enumeration and credential attacks, plus planted privesc breadcrumbs
 - vuln-docker: Docker host running WebGoat (guided lessons, WebWolf on 9090) and [crAPI](https://owasp.org/www-project-crapi/) (OWASP API Top 10, MailHog on 8025)
-- vuln-k8s: single-node [k3s](https://k3s.io) with a world-readable kubeconfig, a plaintext cluster secret and a privileged hostPath pod
-- vuln-iot: anonymous Mosquitto MQTT with simulated devices: a gateway that leaks admin credentials in a status topic, and a smart lock that obeys any command topic message and logs it world-readably
+- vuln-k8s: single-node [k3s](https://k3s.io) with a deliberately weak cluster config
+- vuln-iot: anonymous Mosquitto MQTT broker with simulated devices
+
+`docs/attacking.md` is the spoiler-free operator's guide per target; `docs/walkthrough.md` holds the full spoilers.
 
 ## Making changes
 
