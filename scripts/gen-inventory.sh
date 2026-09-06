@@ -28,16 +28,10 @@ rows="$(cat)"
   done <<<"$rows"
 
   echo "  children:"
-  # One group per role, ALWAYS, including roles whose only VMs are state=off
-  # and therefore absent from the rows. Emitting an empty group keeps the
-  # playbook's host patterns matching (an empty play skips silently) instead
-  # of warning "Could not match supplied host pattern".
-  # The group name is derived from the role, not equal to
-  # it, for two reasons Ansible warns about otherwise: a role like 'vuln-web'
-  # is not a valid group identifier (hyphens), and a host and group with the
-  # same name (short name == role, e.g. attacker:attacker) collide. Prefixing
-  # 'role_' and mapping '-' to '_' avoids both. The playbook targets these
-  # 'role_*' groups; --tags still uses the plain role names.
+  # One group per role, ALWAYS, even when all its VMs are state=off: an empty
+  # group makes the playbook's pattern match (and skip silently) instead of
+  # warning. Names are role_<role> with '-' to '_': 'vuln-web' is not a valid
+  # group name, and a host and group may not share a name (attacker:attacker).
   # Unique roles from the fleet, preserving first-seen order.
   roles=""
   for entry in "${LAB_VMS[@]}"; do

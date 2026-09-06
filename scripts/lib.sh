@@ -12,13 +12,8 @@ ANSIBLE_DIR="${REPO_ROOT}/ansible"
 INVENTORY_FILE="${ANSIBLE_DIR}/inventory/hosts.generated.yaml"
 
 # --- Logging ----------------------------------------------------------------
-# All four write to stderr, so a script's stdout carries only its data. That
-# matters because callers capture that data: up.sh does
-# result="$(create-vm.sh ... | tail -1)" and create-vm.sh does
-# seed="$(make-seed.sh ... | tail -1)". When log/ok wrote to stdout, every
-# message from those scripts was swallowed by the command substitution and
-# never reached the terminal, including the reconcile telling you it was about
-# to restart a VM.
+# All four write to stderr: callers capture stdout (e.g.
+# result="$(create-vm.sh ... | tail -1)"), so stdout must carry only data.
 _c() { printf '\033[%sm' "$1"; }
 log()  { printf '%s%s%s %s\n' "$(_c '1;34')" "==>" "$(_c 0)" "$*" >&2; }
 ok()   { printf '%s%s%s %s\n' "$(_c '1;32')" " ok" "$(_c 0)" "$*" >&2; }
@@ -26,16 +21,13 @@ warn() { printf '%s%s%s %s\n' "$(_c '1;33')" " ! " "$(_c 0)" "$*" >&2; }
 die()  { printf '%s%s%s %s\n' "$(_c '1;31')" "err" "$(_c 0)" "$*" >&2; exit 1; }
 
 # --- Config -----------------------------------------------------------------
-# Validate the lab.conf variables every script depends on. Split out from
-# load_config so tests can exercise it directly against fake values, without
-# needing a real lab.conf on disk.
+# Validate lab.conf vars. Split from load_config so tests can exercise it
+# without a real lab.conf on disk.
 require_lab_conf_vars() {
   : "${LAB_PREFIX:?LAB_PREFIX missing in lab.conf}"
   : "${LAB_USER:?LAB_USER missing in lab.conf}"
   : "${LAB_SSH_KEY:?LAB_SSH_KEY missing in lab.conf}"
-  # parse_vm_entry falls back to these for any fleet entry that omits
-  # cpu=/ram=/disk=, so every script that touches the fleet needs them, not
-  # just create-vm.sh.
+  # parse_vm_entry falls back to these for entries without cpu=/ram=/disk=.
   : "${LAB_CPU:?LAB_CPU missing in lab.conf}"
   : "${LAB_RAM:?LAB_RAM missing in lab.conf}"
   : "${LAB_DISK_GB:?LAB_DISK_GB missing in lab.conf}"
@@ -67,19 +59,14 @@ role_image() {
   esac
 }
 
-# Parse one LAB_VMS entry into VM_SHORT / VM_ROLE / VM_CPU / VM_RAM / VM_DISK /
-# VM_STATE.
-#
-# Entry syntax: "name:role [cpu=N] [ram=MiB] [disk=GB] state=on|off"
-# state= is REQUIRED on every entry: the toggle is always explicit, never
-# implied. cpu/ram/disk are optional, order-free, and fall back to the lab-wide
-# LAB_CPU / LAB_RAM / LAB_DISK_GB. Omitting ":role" makes the role the same as
-# the name. state=off keeps the VM's index (and therefore its lab IP and SSH
-# port reserved) but excludes it from make up/provision and Ansible: 'make up'
-# stops it if it is running. make down/destroy/status still see it.
-#
-# This is the ONLY place that knows the fleet syntax. Bash 3.2 has no
-# associative arrays, so the result comes back as globals.
+# Parse one LAB_VMS entry into VM_SHORT/VM_ROLE/VM_CPU/VM_RAM/VM_DISK/VM_STATE
+# globals (Bash 3.2: no associative arrays). This is the ONLY place that knows
+# the fleet syntax:
+#   "name:role [cpu=N] [ram=MiB] [disk=GB] state=on|off"
+# state= is required; off keeps the VM's index reserved (lab IP + SSH port)
+# but excludes it from make up/provision and Ansible. cpu/ram/disk are
+# optional and fall back to the LAB_* defaults. Omitting ":role" makes the
+# role equal to the name.
 parse_vm_entry() {
   local entry="${1:?entry required}"
   local spec fields field key val
@@ -92,8 +79,7 @@ parse_vm_entry() {
     fields=""
   fi
 
-  # Split the head at the FIRST colon, so a colon in a field can never be
-  # mistaken for the role separator.
+  # Split the head at the FIRST colon so colons in fields stay safe.
   VM_SHORT="${spec%%:*}"
   VM_ROLE="${spec#*:}"
   [[ -n "$VM_SHORT" ]] || die "LAB_VMS entry '${entry}' has no VM name."
@@ -102,8 +88,7 @@ parse_vm_entry() {
   VM_CPU="$LAB_CPU"
   VM_RAM="$LAB_RAM"
   VM_DISK="$LAB_DISK_GB"
-  # No default: state must be set explicitly by the loop below, and a missing
-  # state= field is rejected after the loop.
+  # No default: a missing state= is rejected after the loop.
   VM_STATE=""
 
   # Deliberate word splitting: the fields are space separated.
@@ -143,7 +128,7 @@ require_macos() {
   [[ "$(uname -s)" == "Darwin" ]] || die "This lab provisions UTM VMs and must run on macOS."
 }
 
-# Locate a qemu-img binary: prefer Homebrew, fall back to the one bundled in UTM.
+# Locate qemu-img: Homebrew, else the one bundled in UTM.
 find_qemu_img() {
   if command -v qemu-img >/dev/null 2>&1; then
     command -v qemu-img; return 0
@@ -154,20 +139,17 @@ find_qemu_img() {
   return 1
 }
 
-# Virtual size of a disk image in bytes, per qemu-img. Prints nothing if the
-# size cannot be read, so callers must handle an empty result.
+# Virtual disk size in bytes per qemu-img; prints nothing if unreadable.
 disk_bytes() {
   local img="${1:?image path required}" qi
   qi="$(find_qemu_img)" || return 0
-  # qemu-img can fail (missing, unreadable or corrupt image) while sed and
-  # head still succeed on empty input; under pipefail that failure becomes
-  # the pipeline's status and would otherwise kill the caller under set -e.
+  # Trailing || true: qemu-img failing must not kill the caller under
+  # pipefail/set -e when sed/head still succeed on empty input.
   "$qi" info "$img" 2>/dev/null | sed -n 's/.*(\([0-9][0-9]*\) bytes).*/\1/p' | head -1 || true
 }
 
 # --- utmctl -----------------------------------------------------------------
-# utmctl ships inside UTM.app and is usually NOT on PATH. Resolve it once so
-# every script can call "$UTMCTL" and work whether or not you added it to PATH.
+# utmctl ships inside UTM.app and is usually not on PATH; resolve it once.
 if command -v utmctl >/dev/null 2>&1; then
   UTMCTL="$(command -v utmctl)"
 else
@@ -179,15 +161,10 @@ vm_exists() {
   "$UTMCTL" list 2>/dev/null | grep -q " ${1}\$"
 }
 
-# Stop a VM and wait for it to really be stopped. utmctl stop asks the guest to
-# shut down, which is not instant, and passes through intermediate statuses
-# (e.g. "stopping") before landing on "stopped". Waits for exactly "stopped",
-# not merely "not started", so a caller that immediately reconfigures the VM
-# never races a UTM that is still mid-shutdown. Returns early (success) if the
-# status is empty, meaning the VM does not exist, so a caller like destroy.sh
-# does not burn the full timeout on a VM that is already gone. Returns 1 if it
-# is still not stopped after the timeout, so callers can decide whether that
-# is fatal.
+# Stop a VM and wait for exactly "stopped" (utmctl stop passes through
+# "stopping"; callers reconfigure right after, so no racing mid-shutdown).
+# Empty status (VM gone) returns success; returns 1 on timeout so callers
+# decide if that is fatal.
 # Usage: stop_vm_and_wait <name> [timeout_seconds, default 60]
 stop_vm_and_wait() {
   local name="${1:?vm name required}" timeout="${2:-60}" waited=0 status
@@ -211,21 +188,17 @@ vm_status() {
   "$UTMCTL" status "${1:?vm name required}" 2>/dev/null || true
 }
 
-# Start a VM through utmctl, falling back to AppleScript on the odd UTM build
-# where utmctl is unhappy. Both create-vm.sh paths (new VM, reconciled VM) route
-# through here so the start command lives in exactly one place.
+# Start a VM (utmctl, AppleScript fallback). Single home for the start command.
 start_vm() {
   local name="${1:?vm name required}"
   "$UTMCTL" start "$name" >/dev/null 2>&1 \
     || osascript -e "tell application \"UTM\" to start virtual machine named \"${name}\"" >/dev/null 2>&1
 }
 
-# Close the UTM console window of a stopped VM, native AppleScript (utmctl has
-# no close command). Do NOT drive the UI with System Events clicks here: a
-# stopped VM's window shows a big start-button overlay, and clicking "button 1"
-# can hit that and boot the VM right back up. Call it only AFTER the VM is
-# stopped; UTM silently ignores the close for a running VM's window (which is
-# fine: that window is in use). Best effort: no window open, nothing happens.
+# Close a stopped VM's console window via native AppleScript (utmctl has no
+# close). Never click the UI instead: a stopped VM's window shows a start
+# overlay and a click can boot it right back up. Best effort, ignored for
+# running VMs (UTM silently declines) and when no window is open.
 close_vm_window() {
   local name="${1:?vm name required}"
   osascript -e "tell application \"UTM\" to close (every window whose name contains \"${name}\")" >/dev/null 2>&1 || true

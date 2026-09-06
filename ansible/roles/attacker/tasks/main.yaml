@@ -28,13 +28,10 @@
       {{ hostvars[host].lab_ip }} {{ hostvars[host].vm_name }}
       {% endfor %}
 
-# The Kali "genericcloud" image runs a minimal cloud kernel that omits the
-# virtio_gpu / DRM framebuffer driver, so UTM's display stays blank ("Display
-# output is not active"). Install the standard Kali kernel (which has virtio_gpu)
-# and make grub boot it by default. IMPORTANT: leave the cloud kernel installed
-# as a fallback; do NOT purge it. Purging it wedged the boot (grub picked a
-# half-removed entry and the guest hung). We only change grub's default. The lab
-# is still driven over SSH; this is only so you can eyeball the attacker.
+# The genericcloud cloud kernel omits virtio_gpu, so UTM's display stays
+# blank. Install the standard Kali kernel and pin grub to it. IMPORTANT: never
+# purge the cloud kernel (purging wedged the boot); only grub's default
+# changes. SSH drives the lab regardless.
 - name: Install the standard Kali kernel (includes virtio_gpu for the console)
   ansible.builtin.apt:
     name: linux-image-arm64
@@ -42,10 +39,9 @@
   when: ansible_distribution == 'Kali'
 
 - name: Make grub default to the standard (non-cloud) kernel
-  # Read the real menuentry ids from the generated grub.cfg rather than guessing
-  # a version/UUID, and pin them via GRUB_DEFAULT=saved. grub sorts the "cloud"
-  # flavour ahead of the plain one at the same version, so without this it would
-  # boot the driver-less cloud kernel.
+  # Pin real menuentry ids from grub.cfg (no guessing): grub sorts the cloud
+  # flavour first at equal version, so without GRUB_DEFAULT=saved it would boot
+  # the driver-less kernel.
   ansible.builtin.shell: |
     set -euo pipefail
     update-grub

@@ -6,10 +6,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 load_config
 mkdir -p "$IMAGES_DIR"
 
-# Verify <file> against a <sums_file> line matching <basename>. Handles the
-# optional "*" binary marker in checksum files. The filename is compared as an
-# exact field, not a regex, so metacharacters in the name (the dots in an image
-# file name) can never match the wrong checksum line.
+# Verify <file> against the <sums_file> line matching <basename> (exact field
+# compare, handles the optional "*" binary marker).
 verify_file() {
   local file=$1 sums=$2 base=$3 expected actual
   [[ -f "$file" && -f "$sums" ]] || return 1
@@ -36,11 +34,9 @@ fetch_ubuntu() {
   ok "Ubuntu image verified: ${img}"
 }
 
-# Kali is distributed as an archive; the published SHA256SUMS covers that
-# archive, not the raw disk we extract from it. So once extracted we record the
-# raw disk's own checksum in a sidecar and re-check it on every later run --
-# otherwise a truncated first extraction would be trusted forever (unlike the
-# Ubuntu image, whose upstream checksum re-verifies the file we actually keep).
+# Kali's SHA256SUMS covers the .tar.xz, not the extracted raw disk, so we
+# record the disk's own checksum in a sidecar and re-verify that on later runs
+# (a truncated extraction would otherwise be trusted forever).
 fetch_kali() {
   local out sidecar archive sums base
   out="${IMAGES_DIR}/${KALI_IMG_FILE}"

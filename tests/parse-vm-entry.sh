@@ -90,18 +90,15 @@ expect_reject "missing state (bare)" "box:role"
 echo
 echo "require_lab_conf_vars:"
 
-# A complete lab.conf, so each check below fails on exactly one missing var.
+# Complete config, so each check fails on exactly one missing var.
 LAB_PREFIX="redteam"
 LAB_USER="operator"
 LAB_SSH_KEY="/tmp/id_ed25519_redteam.pub"
 # LAB_CPU / LAB_RAM / LAB_DISK_GB are already set above, standing in for
 # load_config's resource defaults.
 
-# expect_config_reject <label> <var>: require_lab_conf_vars must die cleanly
-# when <var> is unset, not fail with set -u's raw "unbound variable" (finding
-# 3: parse_vm_entry hard-depends on LAB_CPU/LAB_RAM/LAB_DISK_GB, but
-# load_config used to validate none of them). Runs in a subshell because die
-# exits.
+# expect_config_reject <label> <var>: dies cleanly on a missing var, not with
+# set -u's raw "unbound variable". Subshell: die exits.
 expect_config_reject() {
   local label="$1" var="$2" out
   if out="$( (unset "$var"; require_lab_conf_vars) 2>&1 )"; then

@@ -20,11 +20,9 @@ run_ansible() {
   log "Installing Ansible Galaxy requirements"
   ansible-galaxy collection install -r "${ANSIBLE_DIR}/requirements.yaml" >/dev/null
   log "Running Ansible playbook"
-  # The console password goes through a 0600 file, not -e on the command line,
-  # so it never appears in the host process list (ps auxww). Single-quoted YAML
-  # scalar with '' escaping keeps any character in the password literal. The
-  # non-secret toolset/gui stay as plain -e. Bake the path into the trap so it
-  # is cleaned up even if ansible-playbook fails under set -e.
+  # The password goes through a 0600 file, not -e, so it never shows in the
+  # process list. Single-quoted YAML scalar, '' for literal quotes; the trap
+  # cleans up even if ansible-playbook fails under set -e.
   local vars_file pw esc
   vars_file="$(mktemp)"
   chmod 600 "$vars_file"
