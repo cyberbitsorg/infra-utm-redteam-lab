@@ -6,3 +6,13 @@ webgoat_image: webgoat/webgoat:2026
 webgoat_container_name: webgoat
 webgoat_port: 8080
 webwolf_port: 9090
+
+# crAPI (OWASP API Top 10 target) runs as a pinned Docker Compose stack next
+# to WebGoat. The version must match both the compose file layout on GitHub
+# (OWASP/crAPI deploy/docker) and the image tags on Docker Hub. Mind that most
+# crapi/* images never got a plain "1.1.6" tag; the last consistent set is
+# 1.1.6-rc8 (arm64 included).
+crapi_version: "1.1.6-rc8"
+crapi_dir: /opt/crapi
+crapi_web_port: 8888
+crapi_mail_port: 8025

@@ -23,8 +23,83 @@
       - "{{ webgoat_port }}:8080"
       - "{{ webwolf_port }}:9090"
 
+- name: Install Docker Compose v2 for the crAPI stack
+  ansible.builtin.apt:
+    name: docker-compose-v2
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create the crAPI deploy directory
+  ansible.builtin.file:
+    path: "{{ crapi_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download the pinned crAPI compose file
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/OWASP/crAPI/v{{ crapi_version }}/deploy/docker/docker-compose.yml
+    dest: "{{ crapi_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Create the crAPI keys directory (compose mounts ./keys for identity)
+  ansible.builtin.file:
+    path: "{{ crapi_dir }}/keys"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download the crAPI JWT key set (public demo keys shipped by the repo)
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/OWASP/crAPI/v{{ crapi_version }}/deploy/docker/keys/jwks.json
+    dest: "{{ crapi_dir }}/keys/jwks.json"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure crAPI (pinned version, reachable on the lab network)
+  # The compose file defaults LISTEN_IP to 127.0.0.1, which would leave the
+  # web UI and MailHog unreachable from the attacker; bind all interfaces.
+  ansible.builtin.copy:
+    dest: "{{ crapi_dir }}/.env"
+    content: |
+      VERSION={{ crapi_version }}
+      LISTEN_IP=0.0.0.0
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Bring up the crAPI stack
+  # No 'compose up --wait' here: the api.mypremiumdealership.com gateway ships
+  # a broken upstream healthcheck (bash /dev/tcp, but the slim image has no
+  # bash), and --wait fails both on that and on services without a healthcheck.
+  # Instead we start everything, then wait on the container that matters
+  # (crapi-web) below. compose only prints container creation lines when
+  # something changed, so an unchanged re-run reports no change.
+  ansible.builtin.command:
+    argv: [docker, compose, up, -d]
+    chdir: "{{ crapi_dir }}"
+  register: crapi_up
+  changed_when: "'Started' in crapi_up.stdout or 'Created' in crapi_up.stdout"
+
+- name: Wait for the crAPI web frontend to be healthy
+  ansible.builtin.command:
+    argv: [docker, inspect, --format, "{{ '{{.State.Health.Status}}' }}", crapi-web]
+  register: crapi_web_health
+  until: crapi_web_health.stdout | trim == 'healthy'
+  retries: 40
+  delay: 10
+  changed_when: false
+
 - name: Report the target URL
   ansible.builtin.debug:
     msg: >-
       WebGoat up: http://{{ lab_ip }}:{{ webgoat_port }}
-      (WebWolf: http://{{ lab_ip }}:{{ webwolf_port }})
+      (WebWolf: http://{{ lab_ip }}:{{ webwolf_port }});
+      crAPI up: http://{{ lab_ip }}:{{ crapi_web_port }}
+      (MailHog: http://{{ lab_ip }}:{{ crapi_mail_port }})
