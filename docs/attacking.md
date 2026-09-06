@@ -4,7 +4,9 @@ A short operator's guide: how to work from the Kali attacker box and where to
 start on each target. Everything here is for **your own lab**. The machines are
 intentionally vulnerable and isolated on `10.10.10.0/24`.
 
-The layout after `make up`:
+The layout after `make up`. Targets default to `state=off` in
+`lab.conf`: set `state=on` for the ones you want and run `make up` before
+attacking them.
 
 | Host | Lab IP | What it is |
 |------|--------|------------|

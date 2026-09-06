@@ -119,12 +119,14 @@ ATTACKER_GUI="none"
 # 'make destroy' then 'make up'. Disks are never shrunk either way: lowering
 # disk= on an existing VM warns and leaves it untouched.
 #
+# Targets default to state=off so 'make up' boots only the attacker; flip
+# one to state=on when you want to attack it.
 # Add a line plus a matching Ansible role to grow the lab (see README).
 LAB_VMS=(
   "attacker:attacker cpu=4 ram=4096 disk=60 state=on"
-  "vuln-web:vuln-web state=on"
-  "vuln-net:vuln-net state=on"
-  "vuln-docker:vuln-docker ram=4096 state=on"
-  "vuln-k8s:vuln-k8s ram=4096 state=on"
-  "vuln-iot:vuln-iot state=on"
+  "vuln-web:vuln-web state=off"
+  "vuln-net:vuln-net state=off"
+  "vuln-docker:vuln-docker ram=4096 state=off"
+  "vuln-k8s:vuln-k8s ram=4096 state=off"
+  "vuln-iot:vuln-iot state=off"
 )

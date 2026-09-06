@@ -40,25 +40,26 @@ The attacker and targets share an isolated `10.10.10.0/24` segment (a shared App
 cp lab.conf.example lab.conf
 ```
 
-The defaults build a Kali `attacker`, a `vuln-web` target (Juice Shop), a `vuln-net` target (weak services plus privesc breadcrumbs), a `vuln-docker` target (WebGoat plus crAPI), a `vuln-k8s` target (single-node k3s) and a `vuln-iot` target (MQTT). Edit `lab.conf` for different names, an extra VM, or the attacker toolset (`ATTACKER_TOOLSET`: `curated` / `headless` / `large`).
+The defaults define a Kali `attacker` (on) plus five targets (Juice Shop, weak services, WebGoat plus crAPI, k3s, MQTT), all off: a `make up` boots only the attacker, and you flip targets on as you need them. Edit `lab.conf` for different names, an extra VM, or the attacker toolset (`ATTACKER_TOOLSET`: `curated` / `headless` / `large`).
 
 Each fleet entry is `"name:role [cpu=N] [ram=MiB] [disk=GB] state=on|off"`. The `state=` field is required on every entry; the toggle is always explicit. The resource fields are optional and fall back to `LAB_CPU`, `LAB_RAM` and `LAB_DISK_GB`, so you only spell out the machines that need more:
 
 ```bash
 LAB_VMS=(
   "attacker:attacker cpu=4 ram=4096 disk=60 state=on"
-  "vuln-web:vuln-web state=on"
-  "vuln-net:vuln-net state=on"
-  "vuln-docker:vuln-docker ram=4096 state=on"
-  "vuln-k8s:vuln-k8s ram=4096 state=on"
-  "vuln-iot:vuln-iot state=on"
+  "vuln-web:vuln-web state=off"
+  "vuln-net:vuln-net state=off"
+  "vuln-docker:vuln-docker ram=4096 state=off"
+  "vuln-k8s:vuln-k8s ram=4096 state=off"
+  "vuln-iot:vuln-iot state=off"
 )
 ```
 
 `state=off` pauses a VM without losing its slot: `make up` skips it (and stops
 it if it is running), Ansible ignores it, but its lab IP and SSH port stay
 reserved so the other VMs never shift address. `make status` shows it as
-`(off)`. Handy to free RAM/CPU while you work on one target.
+`(off)`. Targets default to off to keep RAM/CPU free; flip one to `state=on`
+and run `make up` when you want to attack it.
 
 ### 2. Build the lab
 
