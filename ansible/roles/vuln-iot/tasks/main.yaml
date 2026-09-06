@@ -1,0 +1,119 @@
+---
+- name: Install the MQTT broker and clients
+  ansible.builtin.apt:
+    name:
+      - mosquitto
+      - mosquitto-clients
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Configure the broker for anonymous access (deliberately weak)
+  # No authentication, no ACLs: anyone on the lab net can publish and
+  # subscribe to every topic, which is how a lot of real IoT setups ship.
+  ansible.builtin.copy:
+    dest: /etc/mosquitto/conf.d/lab-vulnerable.conf
+    content: |
+      listener {{ mqtt_port }}
+      allow_anonymous true
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart mosquitto
+
+- name: Install the device simulator (sensor + leaky gateway status)
+  # Plain mosquitto_pub in a loop: no extra dependencies, easy to read.
+  ansible.builtin.copy:
+    dest: /usr/local/bin/lab-iot-sim
+    content: |
+      #!/bin/sh
+      # Simulates IoT traffic: a temperature sensor and a "gateway" whose
+      # status message leaks its admin credentials (lab-only, of course).
+      while true; do
+        mosquitto_pub -h localhost -t home/sensors/livingroom/temperature \
+          -m "{\"value\": $((19 + RANDOM % 7))}"
+        mosquitto_pub -h localhost -t home/gateway/status \
+          -m "{\"fw\": \"1.0.3\", \"admin_user\": \"gateway\", \"admin_pass\": \"G4t3way!2026\"}"
+        sleep 10
+      done
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the publisher simulator unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/lab-iot-pub.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Lab IoT traffic simulator (sensor + gateway status)
+      After=network.target mosquitto.service
+
+      [Service]
+      ExecStart=/usr/local/bin/lab-iot-sim
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: restart lab-iot services
+
+- name: Install the smart lock simulator (obeys an unauthenticated command topic)
+  ansible.builtin.copy:
+    dest: /usr/local/bin/lab-iot-lock
+    content: |
+      #!/bin/sh
+      # The "lock" accepts any command published to its topic by anyone, logs
+      # it world-readably, and reports itself unlocked.
+      mosquitto_sub -h localhost -t home/devices/smartlock/cmd |
+        while read -r cmd; do
+          echo "$(date -Is) cmd=$cmd" >> {{ smartlock_log }}
+          mosquitto_pub -h localhost -t home/devices/smartlock/state \
+            -m '{"locked": false}'
+        done
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the smart lock unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/lab-iot-lock.service
+    content: |
+      [Unit]
+      Description=Lab IoT smart lock simulator
+      After=network.target mosquitto.service
+
+      [Service]
+      ExecStart=/usr/local/bin/lab-iot-lock
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart lab-iot services
+
+- name: Make the smart lock log world-readable (it records every command)
+  ansible.builtin.file:
+    path: "{{ smartlock_log }}"
+    state: touch
+    owner: root
+    group: root
+    mode: "0644"
+  changed_when: false
+
+- name: Enable and start the simulator services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - lab-iot-pub
+    - lab-iot-lock
+
+- name: Report the target
+  ansible.builtin.debug:
+    msg: >-
+      MQTT broker up on {{ lab_ip }}:{{ mqtt_port }} (anonymous, no ACLs)

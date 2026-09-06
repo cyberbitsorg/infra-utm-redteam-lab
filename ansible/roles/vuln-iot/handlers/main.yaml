@@ -1,0 +1,14 @@
+---
+- name: restart mosquitto
+  ansible.builtin.service:
+    name: mosquitto
+    state: restarted
+
+- name: restart lab-iot services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: restarted
+    daemon_reload: true
+  loop:
+    - lab-iot-pub
+    - lab-iot-lock

@@ -6,6 +6,13 @@
     update_cache: true
     cache_valid_time: 3600
 
+- name: Install MQTT clients (needed for the vuln-iot target)
+  # Outside attacker_packages: the headless/large metapackages replace the
+  # curated list wholesale, and neither includes mosquitto-clients.
+  ansible.builtin.apt:
+    name: mosquitto-clients
+    state: present
+
 - name: Ensure SecLists wordlists are present
   ansible.builtin.apt:
     name: seclists

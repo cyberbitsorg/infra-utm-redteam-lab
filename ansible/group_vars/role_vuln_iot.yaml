@@ -1,0 +1,5 @@
+---
+# IoT target: an MQTT broker with deliberately weak configuration plus
+# simulated devices. Lab-only, never replicate on a real network.
+mqtt_port: 1883
+smartlock_log: /var/log/smartlock.log

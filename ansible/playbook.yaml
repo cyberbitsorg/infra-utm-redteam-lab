@@ -47,3 +47,10 @@
   roles:
     - role: vuln-k8s
       tags: [vuln-k8s, apps]
+
+- name: Configure vulnerable IoT target
+  hosts: role_vuln_iot
+  become: true
+  roles:
+    - role: vuln-iot
+      tags: [vuln-iot, apps]
