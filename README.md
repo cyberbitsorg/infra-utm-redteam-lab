@@ -13,7 +13,7 @@ This project splits deployment into four phases, mirroring the pattern used acro
 | Provisioning | UTM AppleScript (`scripts/`) | Creates each VM from a verified ARM64 cloud image, two NICs, boots it | `make up` |
 | Bootstrap | Cloud-init | Creates the lab user, injects the SSH key, installs Python, sets the lab IP | First boot only |
 | Configuration | Ansible | Installs the Kali toolset and the vulnerable targets, wires up hosts | Automatic after boot |
-| Extension | You | Add more targets, or a Windows AD phase (see `docs/extending.md`) | On demand |
+| Extension | You | Add more targets (see `docs/extending.md`) | On demand |
 
 The attacker and targets share an isolated `10.10.10.0/24` segment (a shared Apple vmnet-host switch, so guests reach each other out of the box). The macOS host reaches each VM over an SSH port forward, so no guest IP discovery is needed. See `docs/network.md` for the full picture.
 
@@ -40,9 +40,9 @@ The attacker and targets share an isolated `10.10.10.0/24` segment (a shared App
 cp lab.conf.example lab.conf
 ```
 
-The defaults build a Kali `attacker`, a `vuln-web` target (Juice Shop), a `vuln-net` target (weak services plus privesc breadcrumbs), a `vuln-docker` target (WebGoat) and a `vuln-k8s` target (single-node k3s). Edit `lab.conf` for different names, an extra VM, or the attacker toolset (`ATTACKER_TOOLSET`: `curated` / `headless` / `large`).
+The defaults build a Kali `attacker`, a `vuln-web` target (Juice Shop), a `vuln-net` target (weak services plus privesc breadcrumbs), a `vuln-docker` target (WebGoat plus crAPI), a `vuln-k8s` target (single-node k3s) and a `vuln-iot` target (MQTT). Edit `lab.conf` for different names, an extra VM, or the attacker toolset (`ATTACKER_TOOLSET`: `curated` / `headless` / `large`).
 
-Each fleet entry is `"name:role [cpu=N] [ram=MiB] [disk=GB] state=on|off"`. The `state=` field is required on every entry — the toggle is always explicit. The resource fields are optional and fall back to `LAB_CPU`, `LAB_RAM` and `LAB_DISK_GB`, so you only spell out the machines that need more:
+Each fleet entry is `"name:role [cpu=N] [ram=MiB] [disk=GB] state=on|off"`. The `state=` field is required on every entry; the toggle is always explicit. The resource fields are optional and fall back to `LAB_CPU`, `LAB_RAM` and `LAB_DISK_GB`, so you only spell out the machines that need more:
 
 ```bash
 LAB_VMS=(
@@ -51,6 +51,7 @@ LAB_VMS=(
   "vuln-net:vuln-net state=on"
   "vuln-docker:vuln-docker ram=4096 state=on"
   "vuln-k8s:vuln-k8s ram=4096 state=on"
+  "vuln-iot:vuln-iot state=on"
 )
 ```
 
@@ -76,11 +77,13 @@ make ssh attacker
 From the attacker box, all targets are reachable on the lab network:
 
 ```bash
-nmap 10.10.10.12 10.10.10.13 10.10.10.14 10.10.10.15
+nmap 10.10.10.12 10.10.10.13 10.10.10.14 10.10.10.15 10.10.10.16
 curl http://10.10.10.12          # vuln-web: OWASP Juice Shop
 curl http://10.10.10.14:8080     # vuln-docker: WebGoat (WebWolf on :9090)
+curl http://10.10.10.14:8888     # vuln-docker: crAPI (MailHog on :8025)
 # vuln-net (10.10.10.13): weak SSH/FTP/Samba, leaked keys and sudo privesc
 # vuln-k8s (10.10.10.15): k3s API on :6443, kubelet on :10250
+# vuln-iot (10.10.10.16): anonymous MQTT broker on :1883
 ```
 
 `docs/attacking.md` is a short operator's guide: where to start on each target,
@@ -102,10 +105,11 @@ of a still-running VM is never touched.
 - attacker: Kali Linux ARM64 with a selectable toolset (`ATTACKER_TOOLSET`: a `curated` subset by default with nmap, hydra, sqlmap, ffuf, gobuster, metasploit, SecLists, or the full `kali-linux-headless` / `kali-linux-large` metapackages), and `/etc/hosts` prefilled with the lab targets
 - vuln-web: OWASP Juice Shop, an intentionally vulnerable web app, served on the lab network
 - vuln-net: a services box with deliberately weak SSH, FTP (vsftpd), and Samba for enumeration and credential attacks, plus post-exploitation breadcrumbs: a leaked SSH key for lateral movement, sudo on a GTFOBins binary, and a plaintext secret in the web root
-- vuln-docker: a Docker host running OWASP WebGoat (guided lessons) with WebWolf on port 9090
-- vuln-k8s: single-node [k3s](https://k3s.io) Kubernetes with deliberately weak configuration — a world-readable kubeconfig, a plaintext secret in a namespace, and a privileged hostPath pod — for cluster attack practice (kube-hunter works well against it)
+- vuln-docker: a Docker host running OWASP WebGoat (guided lessons, WebWolf on port 9090) and [crAPI](https://owasp.org/www-project-crapi/) (the OWASP API Top 10 vehicle app, with MailHog on 8025 so you can read the mail it sends)
+- vuln-k8s: single-node [k3s](https://k3s.io) Kubernetes with deliberately weak configuration: a world-readable kubeconfig, a plaintext secret in a namespace, and a privileged hostPath pod, for cluster attack practice (kube-hunter works well against it)
+- vuln-iot: an MQTT broker (Mosquitto) with anonymous access and no ACLs, plus simulated devices: a sensor publisher, a "gateway" that leaks its admin credentials in a status topic, and a smart lock that obeys commands on an unauthenticated topic and logs them world-readably
 
-The toolset and targets are starting points. `docs/extending.md` shows how to add VMs and how to grow into a Windows Active Directory (AD) phase.
+The toolset and targets are starting points. `docs/extending.md` shows how to add VMs.
 
 ## Making changes
 
@@ -113,7 +117,7 @@ Change the fleet in `lab.conf`, then adjust Ansible:
 
 - pick the attacker toolset with `ATTACKER_TOOLSET` in `lab.conf`, or edit the package sets in `ansible/group_vars/role_attacker.yaml`
 - set the attacker's console/GUI password with `ATTACKER_PASSWORD` in `lab.conf` (defaults to `redteam`). The attacker role removes the Kali image's auto-login and leaves a login prompt on both the console and the GUI greeter; SSH stays key-only
-- give the attacker a desktop with `ATTACKER_GUI=xfce` in `lab.conf` — installs XFCE + LightDM, prompting for `ATTACKER_PASSWORD` at the greeter, rendered in UTM's own window (off by default). Turning it back to `none` does not uninstall it; `make destroy` + `make up` for a clean headless box
+- give the attacker a desktop with `ATTACKER_GUI=xfce` in `lab.conf` (installs XFCE + LightDM, prompting for `ATTACKER_PASSWORD` at the greeter, rendered in UTM's own window, off by default). Turning it back to `none` does not uninstall it; `make destroy` + `make up` for a clean headless box
 - change the web target in `ansible/group_vars/role_vuln_web.yaml`, or the weak services in `ansible/group_vars/role_vuln_net.yaml`
 - add a new role under `ansible/roles/` and a play in `ansible/playbook.yaml`
 
@@ -157,10 +161,6 @@ This project builds intentionally vulnerable machines. Treat it accordingly.
 - The lab segment (`10.10.10.0/24`) has no route to your home network. Keep it that way, and never move a vulnerable VM to bridged networking on an untrusted LAN
 - The NAT interface exists only so first-boot can install packages. `docs/network.md` explains how to remove it for a fully offline target
 - This lab is for authorised, educational use on machines you own. Do not point these tools at systems you do not have permission to test
-
-### About Windows images
-
-This repo ships no Microsoft images. If you add a Windows or Windows Server phase, you build the ISO yourself and use evaluation licensing. See `docs/extending.md`.
 
 ## Validate on first run
 

@@ -22,7 +22,7 @@ Lab interface: UTM "host" mode (Apple vmnet-host)
 - Purpose: the isolated segment where the exercise happens
 - Static addresses on `10.10.10.0/24`, assigned by cloud-init and matched by MAC:
   attacker `10.10.10.11`, vuln-web `.12`, vuln-net `.13`, vuln-docker `.14`,
-  vuln-k8s `.15` (`10 + index`)
+  vuln-k8s `.15`, vuln-iot `.16` (`10 + index`)
 - All lab VMs in "host" mode share ONE Apple vmnet L2 switch, so they reach each
   other on `10.10.10.0/24` out of the box. (Two "emulated" NICs would NOT bridge:
   each is its own private SLIRP net, so guest-to-guest traffic never flows.)
@@ -51,10 +51,10 @@ After `make up`, the attacker should reach the targets on the lab net:
 ```bash
 make ssh attacker
 ping 10.10.10.12            # vuln-web (Juice Shop)
-ping 10.10.10.{13..15}     # the other targets
+ping 10.10.10.{13..16}     # the other targets
 ```
 
-All should answer (VMs with `state=off` will not — that is expected). If they
+All should answer (VMs with `state=off` will not, which is expected). If they
 do not, confirm each VM's lab NIC is UTM "host" mode
 (the shared Apple vmnet switch) rather than "emulated" (per-VM isolated SLIRP).
 

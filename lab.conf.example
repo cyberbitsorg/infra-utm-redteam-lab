@@ -102,7 +102,7 @@ ATTACKER_GUI="none"
 # room if you raise ATTACKER_TOOLSET: kali-linux-large does not fit in 20 GB.
 #
 # state=off skips a VM in 'make up' / 'make provision' (stopping it if it is
-# running) and leaves it out of Ansible, but KEEPS its index — its lab IP and
+# running) and leaves it out of Ansible, but KEEPS its index: its lab IP and
 # SSH port stay reserved, so toggling other VMs on/off later never shifts the
 # addresses of the rest. 'make status' marks it "(off)"; 'make down' and
 # 'make destroy' still cover it. Freeing its resources completely still means
@@ -126,4 +126,5 @@ LAB_VMS=(
   "vuln-net:vuln-net state=on"
   "vuln-docker:vuln-docker ram=4096 state=on"
   "vuln-k8s:vuln-k8s ram=4096 state=on"
+  "vuln-iot:vuln-iot state=on"
 )
